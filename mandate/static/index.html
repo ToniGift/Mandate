@@ -1,0 +1,827 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mandate dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,300..800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- AG Grid Community, pinned to an exact version -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/styles/ag-grid.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/styles/ag-theme-quartz.css">
+<script src="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/dist/ag-grid-community.min.js"></script>
+<style>
+  /* Five colours. Everything else is one of these at lower strength. */
+  :root {
+    --paper: #E8EDE8;          /* celadon paper */
+    --ink: #16222E;            /* ink navy */
+    --teal: #1D6B53;           /* stamp teal: allowed, paid, approved */
+    --amber: #8C5C00;          /* signal amber: held */
+    --oxblood: #992B3A;        /* oxblood: blocked, failed, attacks */
+    --slip: #F6F8F5;           /* the paper, lightened: slips and grids */
+    --ink-soft: #46535F;       /* ink for secondary text */
+    --rule: rgba(22, 34, 46, .22);
+    --display: "Bricolage Grotesque", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+    --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-padding-top: 72px; }  /* keep focused items clear of the fixed mandate bar */
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.45 var(--body); color-scheme: light;
+         min-height: 100vh; display: flex; flex-direction: column; }
+  :focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+
+  .desk { max-width: 1480px; width: 100%; margin: 0 auto; padding: 22px 24px 48px; flex: 1; }
+
+  /* ---- the header: one dark bar that stays at the top, same colour at the top and when scrolled ---- */
+  .hdr { position: sticky; top: 0; z-index: 50; background: var(--ink); color: var(--paper); border-bottom: 3px solid var(--teal); }
+  .hdr :focus-visible { outline-color: #fff; }
+  .nav-in { max-width: 1480px; margin: 0 auto; padding: 10px 24px; display: flex; align-items: center; gap: 0; min-height: 66px; }
+  /* the Mandate button opens and closes the mandate slip below */
+  .brand-btn { display: flex; align-items: baseline; gap: 12px; margin-right: 22px; padding: 4px 14px 5px; cursor: pointer;
+               background: transparent; color: #fff; border: 2px solid rgba(232, 237, 232, .4); border-radius: 6px; }
+  .brand-btn[aria-expanded="true"] { background: rgba(232, 237, 232, .12); border-color: var(--paper); }
+  .brand-word { font-family: var(--display); font-weight: 800; font-size: 28px; letter-spacing: -.02em; line-height: 1.1; }
+  /* the mandate figures show in the bar whenever the big slip is closed or scrolled out of view */
+  .hdr-figs { display: none; align-items: center; }
+  body.slip-out .hdr-figs { display: flex; }
+  .hdr-note { font-size: 13px; color: #B9C5BC; margin-right: 16px; white-space: nowrap; }
+  .hdr-note.error { color: #F2B8C0; }
+  .btn.light { border-color: var(--paper); color: var(--paper); background: transparent; }
+  /* the figures are separated by a dashed tear line, like the stub on the slip */
+  .nav-fig { display: flex; flex-direction: column; line-height: 1.2; white-space: nowrap;
+             padding: 0 22px; border-left: 2px dashed rgba(232, 237, 232, .3); }
+  .nav-fig .k { font-size: 12px; color: #B9C5BC; }
+  .nav-fig .v { font-weight: 600; font-size: 15px; color: #fff; }
+  .nav-budget { flex: 0 1 300px; min-width: 170px; }
+  .nav-budget .v { font-family: var(--display); font-size: 22px; font-weight: 700; line-height: 1.1; }
+  .nav-budget .v small { font-family: var(--body); font-size: 13px; font-weight: 400; color: #B9C5BC; }
+  .nav-budget .bar { height: 6px; margin: 5px 0 0; background: rgba(232, 237, 232, .25); }
+  .nav-budget .bar > div { background: var(--paper); }
+  .nav-spacer { flex: 1; }
+  /* the stamp sits on a paper label so it stays readable on the dark bar */
+  .nav-tag { background: var(--slip); padding: 7px 12px 6px; border-radius: 2px; margin-right: 16px; min-height: 30px; }
+  @media (max-width: 1150px) { .nav-opt, .hdr-note { display: none; } }
+  @media (max-width: 760px) { .nav-tag { margin-right: 10px; } }
+
+  /* ---- footer ---- */
+  .foot { background: var(--ink); color: var(--paper); margin-top: 24px; }
+  .foot-in { max-width: 1480px; margin: 0 auto; padding: 28px 24px 24px; display: grid;
+             grid-template-columns: 1.4fr 1fr 1fr; gap: 32px; }
+  .foot h3 { font-size: 18px; margin-bottom: 8px; color: #fff; }
+  .foot p, .foot li { font-size: 14px; line-height: 1.5; color: #D5DDD6; }
+  .foot ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+  .foot a { color: #fff; font-weight: 600; }
+  .foot a:focus-visible { outline-color: #fff; }
+  .foot-base { max-width: 1480px; margin: 0 auto; padding: 14px 24px 22px; border-top: 1px solid rgba(232, 237, 232, .25);
+               font-size: 13px; color: #D5DDD6; display: flex; justify-content: space-between; align-items: center;
+               gap: 16px; flex-wrap: wrap; }
+  .reset-box { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--rule); display: grid; gap: 6px; }
+  .btn.reset { border-style: dashed; justify-self: start; }
+  @media (max-width: 820px) { .foot-in { grid-template-columns: minmax(0, 1fr); gap: 20px; } }
+  h1, h2, h3 { font-family: var(--display); margin: 0; font-weight: 700; letter-spacing: -.01em; }
+  h1 { font-size: 44px; line-height: 1; }
+  h2 { font-size: 24px; }
+  .soft { color: var(--ink-soft); }
+  .small { font-size: 14px; }
+  p { margin: 0; }
+
+  /* ---- buttons: slightly rounded, nothing else is ---- */
+  button { font: inherit; }
+  .btn { font-weight: 600; font-size: 15px; padding: 8px 14px; border-radius: 6px; border: 2px solid var(--ink);
+         background: transparent; color: var(--ink); cursor: pointer; text-align: left; }
+  .btn.solid { background: var(--ink); color: var(--paper); }
+  .btn:disabled { opacity: .55; cursor: wait; }
+  .btn.approve { background: var(--teal); border-color: var(--teal); color: #fff; padding: 4px 12px; }
+  .btn.reject { border-color: var(--oxblood); color: var(--oxblood); padding: 4px 12px; }
+  .btn.small { padding: 5px 12px; font-size: 14px; }
+  .stack { display: grid; gap: 8px; }
+
+  /* ---- top bar ---- */
+  .slip[hidden] { display: none; }
+
+  /* ---- the mandate: a signed slip with a tear-off budget stub ---- */
+  .slip { display: grid; grid-template-columns: minmax(0, 1fr) 300px; background: var(--slip);
+          border: 1px solid var(--rule); border-radius: 2px; margin-bottom: 28px; }
+  .terms { padding: 18px 24px 20px; }
+  .terms .intro { margin: 4px 0 6px; }
+  .lines { margin: 8px 0 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px; }
+  .lines div { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--rule); }
+  .lines dt { color: var(--ink-soft); }
+  .lines dd { margin: 0; font-weight: 600; text-align: right; }
+  .stub { position: relative; padding: 18px 24px 20px; border-left: 2px dashed var(--rule); }
+  .stub::before, .stub::after { content: ""; position: absolute; left: -11px; width: 20px; height: 20px;
+                                 border-radius: 50%; background: var(--paper); border: 1px solid var(--rule); }
+  .stub::before { top: -11px; }
+  .stub::after { bottom: -11px; }
+  .stub .big { font-family: var(--display); font-size: 44px; font-weight: 700; line-height: 1.05; margin-top: 2px; }
+  .bar { height: 10px; background: var(--rule); margin: 12px 0 6px; border-radius: 1px; }
+  .bar > div { height: 100%; background: var(--ink); }
+  .bar-labels { display: flex; justify-content: space-between; gap: 8px; }
+  @media (max-width: 820px) {
+    .slip { grid-template-columns: minmax(0, 1fr); }
+    .stub { border-left: none; border-top: 2px dashed var(--rule); }
+    .stub::before { left: -11px; top: -11px; }
+    .stub::after { left: auto; right: -11px; top: -11px; bottom: auto; }
+    .lines { grid-template-columns: minmax(0, 1fr); }
+  }
+
+  /* ---- the working area: record on the left, controls on the right ---- */
+  .work { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 28px; align-items: start; }
+  @media (max-width: 999px) { .work { grid-template-columns: minmax(0, 1fr); } }
+  .main section { margin-bottom: 30px; }
+  .section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
+  .side section, .side details { margin-bottom: 22px; }
+  .side h2 { font-size: 20px; margin-bottom: 10px; }
+  .note { min-height: 1.4em; margin-top: 8px; }
+  .own { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--rule); display: grid; gap: 6px; }
+  .own h3 { font-size: 18px; margin-bottom: 2px; }
+  .own label { font-size: 14px; font-weight: 600; }
+  .own select, .own input { font: inherit; padding: 8px 10px; border: 2px solid var(--ink); border-radius: 2px;
+                            background: var(--slip); color: var(--ink); width: 100%; }
+  .own button { margin-top: 4px; }
+  .detail { margin-top: 8px; padding: 8px 12px; background: var(--slip); border-left: 4px solid var(--ink); min-height: 3em; }
+  .detail div + div { margin-top: 2px; }
+  .tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--ink); }
+  .tab { font-weight: 600; padding: 8px 16px; border: 2px solid transparent; border-bottom: none; background: transparent;
+         color: var(--ink-soft); cursor: pointer; border-radius: 6px 6px 0 0; }
+  .tab[aria-selected="true"] { background: var(--ink); color: var(--paper); }
+  .panel[hidden] { display: none; }
+  .empty { color: var(--ink-soft); font-size: 15px; }
+  .error { color: var(--oxblood); font-weight: 600; }
+
+  /* the simulated attack drawer is deliberately loud and clearly labelled */
+  details.attack { border: 2px dashed var(--oxblood); background: rgba(153, 43, 58, .06); padding: 12px 14px; border-radius: 2px; }
+  details.attack summary { cursor: pointer; }
+  details.attack h2 { color: var(--oxblood); font-size: 20px; display: inline; margin: 0; }
+  .tag { display: block; margin-top: 8px; background: var(--oxblood); color: #fff; font-weight: 600;
+         padding: 4px 8px; border-radius: 2px; font-size: 14px; }
+  details.attack .btn { border-color: var(--oxblood); color: var(--oxblood); background: var(--slip); }
+  details.attack .stack { margin-top: 10px; }
+
+  /* ---- result boxes: where the stamp lands ---- */
+  .result { margin-top: 12px; padding: 12px; background: var(--slip); border: 1px solid var(--rule); border-radius: 2px; display: none; }
+  .result.show { display: block; }
+  .result .head { display: flex; align-items: center; gap: 14px; margin: 4px 0 8px; flex-wrap: wrap; }
+  .result ul { margin: 6px 0 0 18px; padding: 0; }
+  .result .title { font-weight: 600; }
+
+  /* ---- rubber stamps ---- */
+  .stamp { display: inline-block; font-family: var(--display); font-weight: 800; font-size: 13px; letter-spacing: .06em;
+           font-stretch: 75%; font-variation-settings: "wdth" 75; line-height: 1; padding: 3px 8px 2px;
+           border: 3px double currentColor; border-radius: 2px; transform: rotate(-3deg); color: var(--c, var(--ink-soft));
+           /* pinholes in the ink, CSS only */
+           -webkit-mask-image: radial-gradient(circle at 20% 30%, transparent 0 .9px, #000 1.3px), radial-gradient(circle at 70% 65%, transparent 0 .9px, #000 1.3px);
+           mask-image: radial-gradient(circle at 20% 30%, transparent 0 .9px, #000 1.3px), radial-gradient(circle at 70% 65%, transparent 0 .9px, #000 1.3px);
+           -webkit-mask-size: 9px 7px, 13px 11px; mask-size: 9px 7px, 13px 11px;
+           -webkit-mask-composite: source-in; mask-composite: intersect; }
+  .stamp.allow { --c: var(--teal); }
+  .stamp.hold { --c: var(--amber); }
+  .stamp.block { --c: var(--oxblood); }
+  .stamp.neutral { --c: var(--ink-soft); }
+  .stamp.big { font-size: 24px; padding: 6px 12px 4px; }
+  .stamp.land { animation: land .2s ease-out; }
+  @keyframes land {
+    from { transform: rotate(-3deg) scale(1.15); opacity: .5; }
+    to   { transform: rotate(-3deg) scale(1);    opacity: 1; }
+  }
+  @media (prefers-reduced-motion: reduce) { .stamp.land { animation: none; } }
+
+  /* ---- AG Grid, restyled with its own theme variables: flat, ruled, no zebra ---- */
+  .desk .ag-theme-quartz {
+    --ag-font-family: var(--body);
+    --ag-font-size: 14px;
+    --ag-foreground-color: var(--ink);
+    --ag-background-color: var(--slip);
+    --ag-header-background-color: var(--paper);
+    --ag-header-foreground-color: var(--ink);
+    --ag-odd-row-background-color: var(--slip);
+    --ag-border-color: var(--rule);
+    --ag-row-border-color: var(--rule);
+    --ag-secondary-border-color: var(--rule);
+    --ag-row-hover-color: rgba(22, 34, 46, .05);
+    --ag-selected-row-background-color: rgba(29, 107, 83, .14);
+    --ag-header-height: 40px;
+    --ag-row-height: 44px;
+    --ag-cell-horizontal-padding: 12px;
+    --ag-wrapper-border-radius: 0px;
+    --ag-border-radius: 2px;
+    --ag-input-focus-border-color: var(--ink);
+    --ag-range-selection-border-color: var(--ink);
+  }
+  .desk .ag-header-cell-label { font-weight: 600; }
+  /* the decision queue gets an amber edge, so it reads as the thing that needs you */
+  #queue-grid { border-left: 5px solid var(--amber); }
+  .stamp-cell { display: flex; align-items: center; }
+  .row-actions { display: flex; gap: 10px; align-items: center; height: 100%; padding-right: 6px; }
+
+  /* ---- phone-friendly cards for the approval queue (shown on narrow screens only) ---- */
+  .cards { display: none; }
+  .q-card { background: var(--slip); border: 1px solid var(--rule); border-left: 5px solid var(--amber);
+            border-radius: 2px; padding: 12px 14px; margin-bottom: 10px; }
+  .q-top { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-weight: 600; overflow-wrap: anywhere; }
+  .q-meta { color: var(--ink-soft); font-size: 14px; margin-top: 2px; overflow-wrap: anywhere; }
+  .q-why { font-size: 14px; margin: 8px 0 12px; overflow-wrap: anywhere; }
+  .q-card .row-actions { height: auto; padding-right: 0; }
+  .q-card .row-actions .btn { flex: 1; text-align: center; }
+
+  /* ---- smaller screens ---- */
+  html { -webkit-text-size-adjust: 100%; }
+  img, svg, video { max-width: 100%; }
+
+  /* tablet and below: one column, in the order a person needs: decisions, then the buttons, then the record */
+  @media (max-width: 999px) {
+    .work { display: flex; flex-direction: column; gap: 28px; }
+    .main { display: contents; }
+    .main section { margin-bottom: 0; }
+    #queue-section { order: 1; }
+    .side { order: 2; }
+    #ledger-section { order: 3; }
+    .side section, .side details { margin-bottom: 0; }
+    .side { display: grid; gap: 22px; }
+  }
+
+  /* phones */
+  @media (max-width: 700px) {
+    #queue-grid { display: none; }
+    .cards { display: block; }
+    .desk { padding: 16px 14px 36px; }
+    .btn { min-height: 44px; }
+    .tab { min-height: 44px; }
+    .own select, .own input { min-height: 44px; }
+    .slip { margin-bottom: 22px; }
+    .terms, .stub { padding-left: 16px; padding-right: 16px; }
+    .stub .big { font-size: 36px; }
+    h2 { font-size: 22px; }
+    .foot-in { padding: 22px 16px 18px; }
+    .foot-base { padding: 14px 16px 22px; }
+    /* the header stays one slim row: the Mandate button and the budget */
+    .nav-in { padding: 8px 14px; min-height: 58px; flex-wrap: nowrap; }
+    .brand-btn { margin-right: 12px; padding: 2px 12px 3px; min-height: 44px; align-items: center; }
+    .brand-word { font-size: 22px; }
+    .nav-tag { display: none; }
+    .hdr-figs { min-width: 0; flex: 1; }
+    .hdr-figs .nav-fig:not(.nav-budget) { display: none; }
+    .nav-budget { flex: 1 1 auto; min-width: 0; padding: 0 0 0 14px; }
+    .nav-budget .v { font-size: 18px; }
+    .nav-budget .v small { display: none; }
+  }
+  @media (max-width: 380px) {
+    .brand-word { font-size: 20px; }
+    .nav-budget { padding-left: 10px; }
+    .lines div { flex-direction: column; gap: 0; }
+    .lines dd { text-align: left; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="nav-in">
+    <button class="brand-btn" id="mandate-btn" aria-expanded="true" aria-controls="slip">
+      <span class="brand-word">Mandate</span>
+    </button>
+    <div class="hdr-figs" id="hdr-figs">
+      <div class="nav-fig nav-budget">
+        <span class="k">Budget left</span>
+        <span class="v" id="n-remaining">-</span>
+        <div class="bar" role="img" id="n-bar" aria-label="Budget used"><div id="n-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="nav-fig"><span class="k">Cap per payment</span><span class="v" id="n-cap">-</span></div>
+      <div class="nav-fig nav-opt"><span class="k">Needs approval above</span><span class="v" id="n-threshold">-</span></div>
+      <div class="nav-fig nav-opt"><span class="k">Expires</span><span class="v" id="n-expires">-</span></div>
+    </div>
+    <span class="nav-spacer"></span>
+    <span class="hdr-note" id="updated">Loading...</span>
+    <span class="nav-tag" id="n-count"></span>
+  </div>
+</header>
+
+<div class="desk">
+
+  <!-- the mandate: the terms on the left, the budget stub on the right. The Mandate button in the header opens and closes it. -->
+  <section class="slip" id="slip" aria-labelledby="slip-title">
+    <div class="terms">
+      <h2 id="slip-title">Mandate</h2>
+      <p class="intro soft">What your AI agent may pay, and who signs off on the rest.</p>
+      <dl class="lines">
+        <div><dt>Currency</dt><dd id="m-currency">-</dd></div>
+        <div><dt>Cap per payment</dt><dd id="m-cap">-</dd></div>
+        <div><dt>Needs approval above</dt><dd id="m-threshold">-</dd></div>
+        <div><dt>Expires</dt><dd id="m-expires">-</dd></div>
+      </dl>
+    </div>
+    <div class="stub">
+      <div class="soft small">Budget left</div>
+      <div class="big" id="m-remaining">-</div>
+      <div class="bar" role="img" id="m-bar" aria-label="Budget used"><div id="m-bar-fill" style="width:0%"></div></div>
+      <div class="bar-labels small"><span id="m-spent">-</span><span class="soft" id="m-total">-</span></div>
+    </div>
+  </section>
+
+  <div class="work">
+    <main class="main">
+      <section id="queue-section" aria-labelledby="queue-title">
+        <div class="section-head">
+          <h2 id="queue-title">Needs a decision</h2>
+          <span id="queue-count"></span>
+        </div>
+        <div id="queue-grid" class="ag-theme-quartz" style="height: 316px"></div>
+        <div id="queue-cards" class="cards"></div>
+        <div class="detail" id="queue-detail" role="status" aria-live="polite">Select a held payment to read why it was held.</div>
+      </section>
+
+      <section id="ledger-section" aria-labelledby="ledger-title">
+        <div class="section-head"><h2 id="ledger-title">Ledger</h2></div>
+        <div class="tabs" role="tablist" aria-label="Ledger">
+          <button class="tab" role="tab" id="tab-payments" aria-controls="panel-payments" aria-selected="true">Payments</button>
+          <button class="tab" role="tab" id="tab-audit" aria-controls="panel-audit" aria-selected="false" tabindex="-1">Audit trail</button>
+        </div>
+        <div class="panel" role="tabpanel" id="panel-payments" aria-labelledby="tab-payments">
+          <div id="payments-grid" class="ag-theme-quartz" style="height: 380px"></div>
+          <div class="detail" id="payments-detail" role="status" aria-live="polite">Select a payment to see its details.</div>
+        </div>
+        <div class="panel" role="tabpanel" id="panel-audit" aria-labelledby="tab-audit" hidden>
+          <div id="audit-grid" class="ag-theme-quartz" style="height: 380px"></div>
+          <div class="detail" id="audit-detail" role="status" aria-live="polite">Select a row to read the full reasons.</div>
+        </div>
+      </section>
+    </main>
+
+    <aside class="side">
+      <section>
+        <h2>Try a request</h2>
+        <div class="stack">
+          <button class="btn solid" data-demo="legitimate">Legitimate invoice 25.00</button>
+          <button class="btn solid" data-demo="changed_payee">Changed payee 40.00</button>
+          <button class="btn solid" data-demo="large">Large invoice 150.00</button>
+          <button class="btn" id="refresh-btn">Refresh payout status</button>
+        </div>
+        <div class="reset-box">
+          <button class="btn reset" id="reset-btn">Reset demo data</button>
+          <p class="soft small">Start over: clears all payments and the audit trail and restores the full budget.</p>
+        </div>
+        <form class="own" id="own-form">
+          <h3>Try your own request</h3>
+          <label for="own-supplier">Supplier</label>
+          <select id="own-supplier" required><option value="">Loading suppliers...</option></select>
+          <label for="own-amount">Amount in <span id="own-currency">USD</span></label>
+          <input id="own-amount" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="for example 60.00" required>
+          <button class="btn solid" type="submit" id="own-send">Send</button>
+          <p class="soft small">The payee is the supplier's address on file. You choose only who and how much.</p>
+        </form>
+        <p class="soft small note" id="message">The legitimate invoice makes a real PayPal sandbox payment.</p>
+        <div class="result" id="demo-result" aria-live="polite"></div>
+      </section>
+
+      <details class="attack" open>
+        <summary>
+          <h2>Simulated compromised agent</h2>
+          <span class="tag">Simulated attack, no AI involved</span>
+        </summary>
+        <p class="small" style="margin-top:10px">
+          These buttons send hand-written bad requests straight to Mandate's rule engine, as if an agent had been
+          tricked. No AI model and no MCP gateway are used. Mandate should stop every one.
+        </p>
+        <div class="stack">
+          <button class="btn" data-attack="injected">Injected payment: 5000 USD to attacker@example.test</button>
+          <button class="btn" data-attack="changed_payee">Changed payee on a known supplier</button>
+          <button class="btn" data-attack="over_cap">Payment over the cap</button>
+        </div>
+        <div class="result" id="attack-result" aria-live="polite"></div>
+      </details>
+    </aside>
+  </div>
+
+</div>
+
+<footer class="foot">
+  <div class="foot-in">
+    <div>
+      <h3>Mandate</h3>
+      <p>A control desk between an AI agent and PayPal. The agent asks, fixed rules decide, and a person signs off on anything held.</p>
+    </div>
+    <div>
+      <h3>Good to know</h3>
+      <ul>
+        <li>Payments run on the PayPal sandbox, so no real money moves.</li>
+        <li>Decisions come from rules written in code, not from an AI model.</li>
+        <li>Every request is written to the audit trail.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Project</h3>
+      <ul>
+        <li>Built for the PayPal AI Hackathon.</li>
+        <li>Open source under the MIT licence.</li>
+        <li><a href="https://github.com/ToniGift/Mandate" rel="noopener">Source code on GitHub</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot-base">Approve and reject exist only on this page. The agent cannot reach them.</div>
+</footer>
+
+<script>
+const REFRESH_MS = 5000;
+const $ = (id) => document.getElementById(id);
+
+// ---- talking to the server -------------------------------------------------
+async function api(method, path, payload) {
+  const res = await fetch(path, payload === undefined ? { method } : {
+    method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+  let body = null;
+  try { body = await res.json(); } catch (e) { /* no JSON body */ }
+  if (!res.ok) throw new Error((typeof (body && body.detail) === "string" && body.detail) || ("HTTP " + res.status));
+  return body;
+}
+
+// ---- small helpers ---------------------------------------------------------
+function fmtTime(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const time = d.toLocaleTimeString("en-GB");
+  if (d.toDateString() === new Date().toDateString()) return time;
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" }) + " " + time.slice(0, 5);
+}
+const fmtAmount = (p) => p.value.toFixed(2) + " " + p.data.currency;
+
+const STAMP_CLASS = {
+  ALLOW: "allow", APPROVE: "allow", PAID: "allow",
+  HOLD: "hold", HELD: "hold",
+  BLOCK: "block", BLOCKED: "block", FAILED: "block",
+  REJECT: "neutral", REJECTED: "neutral", ERROR: "block",
+};
+function stamp(word, extra = "", kind = STAMP_CLASS[word] || "neutral") {
+  const s = document.createElement("span");
+  s.className = "stamp " + kind + (extra ? " " + extra : "");
+  s.textContent = word;
+  return s;
+}
+const stampRenderer = (p) => (p.value ? stamp(p.value) : "");
+
+function line(text, cls) {
+  const d = document.createElement("div");
+  if (cls) d.className = cls;
+  d.textContent = text;
+  return d;
+}
+function setDetail(id, lines) { $(id).replaceChildren(...lines.map((t) => line(t))); }
+
+// ---- grids -----------------------------------------------------------------
+// Every long text is one line with "...", the full text is in a tooltip and in the strip under the grid.
+const textCol = (extra) => ({ tooltipValueGetter: (p) => p.value, ...extra });
+
+function makeGrid(elementId, columnDefs, options) {
+  return agGrid.createGrid($(elementId), {
+    columnDefs,
+    defaultColDef: { sortable: true, filter: true, resizable: true },
+    getRowId: (p) => String(p.data.id),
+    rowSelection: "single",
+    tooltipShowDelay: 400,
+    animateRows: false,
+    headerHeight: 40,
+    ...options,
+  });
+}
+
+// Hide the less important columns when the grid is narrow, so there is never a sideways scrollbar.
+function hideWhenNarrow(elementId, api, showAt) {
+  const el = $(elementId);
+  const apply = () => {
+    const w = el.clientWidth;
+    if (!w) return;  // the tab is hidden
+    for (const [col, min] of Object.entries(showAt)) api.setColumnsVisible([col], w >= min);
+  };
+  new ResizeObserver(apply).observe(el);
+}
+
+// Approve and Reject buttons for one held payment (used in the grid and in the phone cards)
+function actionButtons(payment) {
+  const wrap = document.createElement("div");
+  wrap.className = "row-actions";
+  const approve = document.createElement("button");
+  approve.className = "btn approve";
+  approve.textContent = "Approve";
+  approve.setAttribute("aria-label", "Approve invoice " + payment.invoice_id);
+  const reject = document.createElement("button");
+  reject.className = "btn reject";
+  reject.textContent = "Reject";
+  reject.setAttribute("aria-label", "Reject invoice " + payment.invoice_id);
+  approve.addEventListener("click", () => decide(payment, "approve", [approve, reject]));
+  reject.addEventListener("click", () => decide(payment, "reject", [approve, reject]));
+  wrap.append(approve, reject);
+  return wrap;
+}
+
+// On a phone the approval queue is a list of cards, because a wide table is hard to use there.
+let lastCards = "";
+function renderQueueCards(held) {
+  const key = JSON.stringify(held.map((p) => [p.id, p.why]));
+  if (key === lastCards) return;  // nothing changed: keep the buttons (and keyboard focus) as they are
+  lastCards = key;
+  const box = $("queue-cards");
+  if (!held.length) {
+    box.replaceChildren(line("Nothing is waiting. Held payments appear here.", "empty"));
+    return;
+  }
+  box.replaceChildren(...held.map((p) => {
+    const card = document.createElement("div");
+    card.className = "q-card";
+    const top = document.createElement("div");
+    top.className = "q-top";
+    top.append(line(p.invoice_id), line(Number(p.amount).toFixed(2) + " " + p.currency));
+    card.append(top, line(p.supplier_id + ", payee " + p.payee_email, "q-meta"),
+                line(p.why || "No reason recorded.", "q-why"), actionButtons(p));
+    return card;
+  }));
+}
+
+const queueGrid = makeGrid("queue-grid", [
+  { colId: "created_at", headerName: "Time", field: "created_at", valueFormatter: (p) => fmtTime(p.value), width: 110, sort: "desc" },
+  textCol({ colId: "invoice_id", headerName: "Invoice", field: "invoice_id", flex: 2, minWidth: 140 }),
+  textCol({ colId: "supplier_id", headerName: "Supplier", field: "supplier_id", width: 110 }),
+  textCol({ colId: "payee_email", headerName: "Payee", field: "payee_email", flex: 1.5, minWidth: 130 }),
+  { colId: "amount", headerName: "Amount", valueGetter: (p) => parseFloat(p.data.amount), filter: "agNumberColumnFilter",
+    valueFormatter: fmtAmount, width: 118 },
+  textCol({ colId: "why", headerName: "Why it was held", field: "why", flex: 3, minWidth: 100 }),
+  { colId: "actions", headerName: "Decision", pinned: "right", lockPinned: true, suppressMovable: true, width: 240,
+    sortable: false, filter: false,
+    cellRenderer: (p) => (p.data ? actionButtons(p.data) : document.createElement("div")) },
+], {
+  // a short list: no filter icons, sorting is enough
+  defaultColDef: { sortable: true, filter: true, resizable: true, suppressHeaderFilterButton: true, suppressHeaderMenuButton: true },
+  rowHeight: 52,
+  overlayNoRowsTemplate: '<span class="empty">Nothing is waiting. Held payments appear here.</span>',
+  onGridReady: (e) => hideWhenNarrow("queue-grid", e.api, { payee_email: 760, created_at: 880, supplier_id: 990 }),
+  onRowClicked: (e) => setDetail("queue-detail", [
+    "Invoice " + e.data.invoice_id + ", " + e.data.supplier_id + ", " + e.data.amount + " " + e.data.currency + ", payee " + e.data.payee_email,
+    "Why it was held: " + (e.data.why || "no reason recorded"),
+  ]),
+});
+
+const paymentsGrid = makeGrid("payments-grid", [
+  { colId: "created_at", headerName: "Time", field: "created_at", valueFormatter: (p) => fmtTime(p.value), width: 110, sort: "desc" },
+  textCol({ colId: "invoice_id", headerName: "Invoice", field: "invoice_id", flex: 2, minWidth: 110 }),
+  textCol({ colId: "payee_email", headerName: "Payee", field: "payee_email", flex: 1.5, minWidth: 130 }),
+  { colId: "amount", headerName: "Amount", valueGetter: (p) => parseFloat(p.data.amount), filter: "agNumberColumnFilter",
+    valueFormatter: fmtAmount, width: 108 },
+  { colId: "status", headerName: "Status", field: "status", width: 112, cellRenderer: stampRenderer, cellClass: "stamp-cell" },
+  { colId: "paypal_status", headerName: "PayPal status", field: "paypal_status", width: 130 },
+  textCol({ colId: "paypal_batch_id", headerName: "PayPal batch", field: "paypal_batch_id", width: 150 }),
+], {
+  defaultColDef: { sortable: true, filter: true, resizable: true, floatingFilter: true },
+  overlayNoRowsTemplate: '<span class="empty">No payments yet. Use Try a request to make one.</span>',
+  onGridReady: (e) => hideWhenNarrow("payments-grid", e.api, { created_at: 560, payee_email: 700, paypal_status: 830, paypal_batch_id: 990 }),
+  onRowClicked: (e) => setDetail("payments-detail", [
+    "Invoice " + e.data.invoice_id + ", " + e.data.supplier_id + ", " + e.data.amount + " " + e.data.currency + ", payee " + e.data.payee_email,
+    "Status " + e.data.status + (e.data.paypal_batch_id ? ", PayPal batch " + e.data.paypal_batch_id + " (" + (e.data.paypal_status || "no status yet") + ")" : ", nothing sent to PayPal"),
+  ]),
+});
+
+const checksText = (data) => {
+  const fired = Object.entries(data.checks).filter(([, v]) => v !== "pass").map(([k, v]) => k + ": " + v);
+  if (fired.length) return fired.join(", ");
+  return Object.keys(data.checks).length ? "all passed" : "none (human decision)";
+};
+const auditGrid = makeGrid("audit-grid", [
+  { colId: "time", headerName: "Time", field: "time", valueFormatter: (p) => fmtTime(p.value), width: 110, sort: "desc" },
+  textCol({ colId: "invoice_id", headerName: "Invoice", field: "invoice_id", flex: 2, minWidth: 110 }),
+  { colId: "decision", headerName: "Decision", field: "decision", width: 112, cellRenderer: stampRenderer, cellClass: "stamp-cell" },
+  textCol({ colId: "reasons", headerName: "Reasons", flex: 3, minWidth: 100, valueGetter: (p) => p.data.reasons.join("; ") }),
+  textCol({ colId: "outcome", headerName: "Outcome", field: "outcome", flex: 2, minWidth: 170 }),
+  textCol({ colId: "checks", headerName: "Checks that fired", flex: 2, minWidth: 170, valueGetter: (p) => checksText(p.data) }),
+], {
+  defaultColDef: { sortable: true, filter: true, resizable: true, floatingFilter: true },
+  overlayNoRowsTemplate: '<span class="empty">No decisions logged yet.</span>',
+  onGridReady: (e) => hideWhenNarrow("audit-grid", e.api, { time: 560, outcome: 740, checks: 920 }),
+  onRowClicked: (e) => setDetail("audit-detail", [
+    "Invoice " + e.data.invoice_id + ", decision " + e.data.decision,
+    ...e.data.reasons.map((r) => "Reason: " + r),
+    "Checks that fired: " + checksText(e.data),
+    "Outcome: " + e.data.outcome,
+  ]),
+});
+
+// ---- ledger tabs -----------------------------------------------------------
+const tabs = [$("tab-payments"), $("tab-audit")];
+function selectTab(tab) {
+  tabs.forEach((t) => {
+    const on = t === tab;
+    t.setAttribute("aria-selected", on);
+    t.tabIndex = on ? 0 : -1;
+    $(t.getAttribute("aria-controls")).hidden = !on;
+  });
+}
+tabs.forEach((t, i) => {
+  t.addEventListener("click", () => selectTab(t));
+  t.addEventListener("keydown", (e) => {
+    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+    const next = tabs[(i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
+    selectTab(next);
+    next.focus();
+  });
+});
+
+// ---- showing a decision: the stamp lands in the result box ------------------
+function showResult(box, r, title) {
+  box.replaceChildren();
+  const head = document.createElement("div");
+  head.className = "head";
+  head.append(stamp(r.decision, "big land"), line("Status: " + r.status));
+  const list = document.createElement("ul");
+  for (const reason of r.reasons) {
+    const li = document.createElement("li");
+    li.textContent = reason;
+    list.append(li);
+  }
+  box.append(line(title, "title"), head, list, line(r.outcome, "soft small"));
+  box.classList.add("show");
+}
+function showError(box, text) {
+  box.replaceChildren(line(text, "error"));
+  box.classList.add("show");
+}
+function clearBox(box) { box.replaceChildren(); box.classList.remove("show"); }
+
+// ---- loading data ----------------------------------------------------------
+function renderMandate(m) {
+  const money = (v) => Number(v).toFixed(2);
+  $("m-currency").textContent = m.currency;
+  $("own-currency").textContent = m.currency;
+  $("m-cap").textContent = money(m.per_payment_cap) + " " + m.currency;
+  $("m-threshold").textContent = money(m.approval_threshold) + " " + m.currency;
+  $("m-expires").textContent = new Date(m.expires_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  $("m-remaining").textContent = money(m.remaining_budget) + " " + m.currency;
+  $("m-spent").textContent = "Spent " + money(m.spent);
+  $("m-total").textContent = "of " + money(m.total_budget);
+  const pct = Math.min(100, Math.max(0, (Number(m.spent) / Number(m.total_budget)) * 100));
+  $("m-bar-fill").style.width = pct + "%";
+  $("m-bar").setAttribute("aria-label", "Budget used: " + money(m.spent) + " of " + money(m.total_budget) + " " + m.currency);
+
+  // the same figures in the fixed bar at the top
+  $("n-remaining").replaceChildren(
+    document.createTextNode(money(m.remaining_budget) + " " + m.currency + " "),
+    Object.assign(document.createElement("small"), { textContent: "of " + money(m.total_budget) }));
+  $("n-bar-fill").style.width = pct + "%";
+  $("n-bar").setAttribute("aria-label", $("m-bar").getAttribute("aria-label"));
+  $("n-cap").textContent = $("m-cap").textContent;
+  $("n-threshold").textContent = $("m-threshold").textContent;
+  $("n-expires").textContent = $("m-expires").textContent;
+}
+
+// the header shows the mandate figures whenever the big slip is closed or scrolled out of view
+// (the top margin keeps the part of the slip hidden behind the sticky header from counting)
+new IntersectionObserver(([entry]) => document.body.classList.toggle("slip-out", !entry.isIntersecting),
+  { rootMargin: "-80px 0px 0px 0px" }).observe($("slip"));
+
+// the Mandate button: open the slip, scroll back up to it, or close it
+$("mandate-btn").addEventListener("click", () => {
+  const slip = $("slip");
+  const scrolledPast = !slip.hidden && slip.getBoundingClientRect().bottom < 80;
+  if (slip.hidden) slip.hidden = false;
+  else if (scrolledPast) { /* just go back up to it */ }
+  else slip.hidden = true;
+  if (!slip.hidden) window.scrollTo({ top: 0 });
+  $("mandate-btn").setAttribute("aria-expanded", String(!slip.hidden));
+});
+
+async function loadAll() {
+  try {
+    const [mandate, payments, audit] = await Promise.all([
+      api("GET", "/api/mandate"), api("GET", "/api/payments"), api("GET", "/api/audit")]);
+    renderMandate(mandate);
+
+    // for the approval queue: the reason the rule engine held each payment
+    const whyByInvoice = {};
+    for (const a of [...audit].reverse()) {
+      if (a.decision === "HOLD") whyByInvoice[a.invoice_id] = a.reasons.join("; ");
+    }
+    const held = payments.filter((p) => p.status === "HELD").map((p) => ({ ...p, why: whyByInvoice[p.invoice_id] || "" }));
+    queueGrid.setGridOption("rowData", held);
+    renderQueueCards(held);
+    paymentsGrid.setGridOption("rowData", payments);
+    auditGrid.setGridOption("rowData", audit);
+    const countStamp = () => (held.length ? stamp(held.length + " waiting", "", "hold") : stamp("All clear", "", "allow"));
+    $("queue-count").replaceChildren(countStamp());
+    $("n-count").replaceChildren(countStamp());
+    $("updated").textContent = "Updated " + new Date().toLocaleTimeString("en-GB") + ", refreshes every " + REFRESH_MS / 1000 + " seconds.";
+    $("updated").classList.remove("error");
+  } catch (e) {
+    $("updated").textContent = "Could not load data (" + e.message + "). Check that the dashboard server is running.";
+    $("updated").classList.add("error");
+  }
+}
+
+// ---- actions ---------------------------------------------------------------
+async function decide(payment, action, buttons) {
+  buttons.forEach((b) => (b.disabled = true));
+  const verb = action === "approve" ? "Approved" : "Rejected";
+  try {
+    const r = await api("POST", "/api/payments/" + payment.id + "/" + action);
+    setDetail("queue-detail", [verb + " invoice " + payment.invoice_id + ".", r.outcome]);
+  } catch (e) {
+    setDetail("queue-detail", ["Could not " + action + " invoice " + payment.invoice_id + ": " + e.message + ". It may already have been decided."]);
+    buttons.forEach((b) => (b.disabled = false));
+  }
+  await loadAll();
+}
+
+document.querySelectorAll("[data-demo]").forEach((b) => b.addEventListener("click", async () => {
+  b.disabled = true;
+  const box = $("demo-result");
+  try {
+    showResult(box, await api("POST", "/api/demo/" + b.dataset.demo), b.textContent);
+  } catch (e) {
+    showError(box, "The request failed: " + e.message + ". Check that the dashboard server is running.");
+  }
+  b.disabled = false;
+  loadAll();
+}));
+
+document.querySelectorAll("[data-attack]").forEach((b) => b.addEventListener("click", async () => {
+  b.disabled = true;
+  const box = $("attack-result");
+  try {
+    showResult(box, await api("POST", "/api/attack/" + b.dataset.attack), b.textContent);
+  } catch (e) {
+    showError(box, "The attack request failed: " + e.message + ". Check that the dashboard server is running.");
+  }
+  b.disabled = false;
+  loadAll();
+}));
+
+// "Try your own request": the user picks the supplier and the amount, the server fixes the payee
+async function loadSuppliers() {
+  const select = $("own-supplier");
+  try {
+    const suppliers = await api("GET", "/api/suppliers");
+    select.replaceChildren(...suppliers.map((s) => {
+      const o = document.createElement("option");
+      o.value = s.supplier_id;
+      o.textContent = s.name + " (" + s.supplier_id + ")";
+      return o;
+    }));
+  } catch (e) {
+    select.replaceChildren(Object.assign(document.createElement("option"), { value: "", textContent: "Could not load suppliers" }));
+  }
+}
+
+$("own-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const send = $("own-send");
+  const select = $("own-supplier");
+  const box = $("demo-result");
+  send.disabled = true;
+  try {
+    const amount = $("own-amount").value;
+    const name = select.options[select.selectedIndex].textContent;
+    showResult(box, await api("POST", "/api/request", { supplier_id: select.value, amount }),
+      "Your request: " + amount + " to " + name);
+  } catch (e) {
+    showError(box, "The request failed: " + e.message + ".");
+  }
+  send.disabled = false;
+  loadAll();
+});
+
+$("refresh-btn").addEventListener("click", async (event) => {
+  event.target.disabled = true;
+  try {
+    const r = await api("POST", "/api/refresh");
+    $("message").textContent = "Payout status: checked " + r.checked + ", updated " + r.updated + ", failed " + r.failed + ".";
+  } catch (e) {
+    $("message").textContent = "Refresh failed: " + e.message + ". Try again in a moment.";
+  }
+  event.target.disabled = false;
+  loadAll();
+});
+
+// start the demo again: asks first, because it deletes the payments and the audit log
+$("reset-btn").addEventListener("click", async (event) => {
+  const ok = window.confirm(
+    "Reset the demo?\n\nThis deletes all payments and the audit log and restores the starting budget. " +
+    "Payments already sent to the PayPal sandbox are not undone.");
+  if (!ok) return;
+  event.target.disabled = true;
+  try {
+    await api("POST", "/api/reset");
+    clearBox($("demo-result"));
+    clearBox($("attack-result"));
+    setDetail("queue-detail", ["Select a held payment to read why it was held."]);
+    setDetail("payments-detail", ["Select a payment to see its details."]);
+    setDetail("audit-detail", ["Select a row to read the full reasons."]);
+    $("message").textContent = "Demo reset. The budget is back to its starting amount.";
+  } catch (e) {
+    $("message").textContent = "Reset failed: " + e.message + ".";
+  }
+  event.target.disabled = false;
+  loadAll();
+});
+
+loadSuppliers();
+loadAll();
+setInterval(loadAll, REFRESH_MS);
+</script>
+</body>
+</html>

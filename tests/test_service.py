@@ -35,7 +35,7 @@ def test_seed_uses_personal_email_for_every_supplier(conn):
     m = store.load_mandate(conn)
     assert len(m.suppliers) == 3
     assert {s.payee_email for s in m.suppliers.values()} == {EMAIL}
-    assert (m.total_budget, m.per_payment_cap, m.approval_threshold) == (D("500"), D("200"), D("100"))
+    assert (m.total_budget, m.per_payment_cap, m.approval_threshold) == (D("1000"), D("200"), D("100"))
 
 
 def test_allow_pays_and_records(conn, payout):
@@ -108,13 +108,13 @@ def test_cannot_approve_twice_or_approve_non_held(conn, payout):
 
 
 def test_budget_tracking_blocks_when_exceeded(conn, payout):
-    # budget is 500 and cap 200: pay 90 five times (450), then 90 more must be blocked
-    for i in range(5):
+    # budget is 1000 and cap 200: pay 90 eleven times (990), then 90 more must be blocked
+    for i in range(11):
         assert service.handle_payment_request(conn, req(invoice_id=f"INV-{i}", amount="90")).status == "PAID"
-    assert store.spent_so_far(conn) == D("450")
+    assert store.spent_so_far(conn) == D("990")
     r = service.handle_payment_request(conn, req(invoice_id="INV-X", amount="90"))
     assert r.status == "BLOCKED" and any("budget" in x for x in r.reasons)
-    assert store.paid_invoice_ids(conn) == {f"INV-{i}" for i in range(5)}
+    assert store.paid_invoice_ids(conn) == {f"INV-{i}" for i in range(11)}
 
 
 def test_held_and_blocked_payments_do_not_count_as_spent(conn, payout):

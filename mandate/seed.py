@@ -25,7 +25,7 @@ def seed(conn: sqlite3.Connection) -> MandateConfig:
 
     mandate = MandateConfig(
         currency="USD",
-        total_budget=Decimal("500"),
+        total_budget=Decimal("1000"),
         per_payment_cap=Decimal("200"),
         approval_threshold=Decimal("100"),
         expires_at=datetime.now(timezone.utc) + timedelta(days=30),

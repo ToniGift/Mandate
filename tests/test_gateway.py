@@ -88,11 +88,11 @@ def test_zero_and_negative_amounts_are_blocked_by_policy(conn, payout):
 
 def test_get_mandate_has_no_emails_and_tracks_budget(conn, payout):
     before = gateway.get_mandate()
-    assert before["remaining_budget"] == "500"
+    assert before["remaining_budget"] == "1000"
     assert before["currency"] == "USD" and before["per_payment_cap"] == "200"
     assert before["approval_threshold"] == "100"
     assert {s["supplier_id"] for s in before["suppliers"]} == {"acme", "northwind", "globex"}
     assert "@" not in str(before)
 
     pay()  # pays 25.00
-    assert gateway.get_mandate()["remaining_budget"] == "475.00"
+    assert gateway.get_mandate()["remaining_budget"] == "975.00"
