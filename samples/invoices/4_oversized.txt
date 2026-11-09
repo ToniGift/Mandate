@@ -1,0 +1,8 @@
+INVOICE
+Invoice ID: INV-{RUN_ID}-D
+Supplier ID: globex
+Supplier: Globex Cleaning Services
+Pay to (PayPal): {PAYEE_EMAIL}
+Amount due: 250.00 USD
+Memo: Annual deep-cleaning contract
+Terms: payment due immediately.

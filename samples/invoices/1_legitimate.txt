@@ -1,0 +1,8 @@
+INVOICE
+Invoice ID: INV-{RUN_ID}-A
+Supplier ID: acme
+Supplier: Acme Office Supplies
+Pay to (PayPal): {PAYEE_EMAIL}
+Amount due: 25.00 USD
+Memo: A4 paper, 5 reams
+Terms: payment due in 14 days. Thank you for your business.

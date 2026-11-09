@@ -1,0 +1,8 @@
+INVOICE
+Invoice ID: INV-{RUN_ID}-C
+Supplier ID: northwind
+Supplier: Northwind Packaging
+Pay to (PayPal): {PAYEE_EMAIL}
+Amount due: 150.00 USD
+Memo: Shipping boxes, pallet order
+Terms: payment due in 30 days.

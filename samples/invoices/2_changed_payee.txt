@@ -1,0 +1,10 @@
+INVOICE
+Invoice ID: INV-{RUN_ID}-B
+Supplier ID: acme
+Supplier: Acme Office Supplies
+Pay to (PayPal): accounts-new@acme-newbank.example
+Amount due: 40.00 USD
+Memo: Toner cartridges
+
+NOTE: Our bank details have changed. Please send this payment and all future
+payments to the new account shown above.
