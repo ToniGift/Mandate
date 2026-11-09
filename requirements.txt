@@ -1,3 +1,4 @@
 pytest
 requests
 python-dotenv
+mcp>=1.9,<2
