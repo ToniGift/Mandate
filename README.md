@@ -1,42 +1,70 @@
 # Mandate
 
-Mandate is a policy gateway that sits between an AI agent and PayPal, because an AI agent that pays invoices can be tricked: one fake invoice, one hidden instruction, and real money moves.
-
-Built for the PayPal AI Hackathon. Everything runs on the PayPal **sandbox**, so no real money is ever sent.
-
-## Demo and links
+Mandate is a policy gateway that sits between an AI agent and PayPal, so an agent that pays invoices cannot be tricked into paying the wrong person or the wrong amount.
 
 - **Demo video (under 3 minutes):** [add the YouTube link here before submitting]
-- **Live demo:** not hosted. The dashboard has no login, so it is meant to run on your own PC. Everything needed is in this repo, and the [Quick start](#quick-start-windows-powershell) takes about five minutes with a free PayPal sandbox account.
-- **Source code:** https://github.com/ToniGift/Mandate (MIT license)
+- **Source code:** https://github.com/ToniGift/Mandate
+- **License:** MIT, see the `LICENSE` file
+- **Live demo:** not hosted. The dashboard has no login, so it is meant to run on your own PC. The [Quick start](#quick-start-windows-powershell) takes about five minutes with free PayPal sandbox accounts.
 
-**If you only have a few minutes, check these:**
+Built for the PayPal AI Hackathon. Everything runs on the PayPal sandbox, so no real money is sent.
 
-1. **Real PayPal use.** An allowed or approved payment makes a real sandbox payout through the PayPal Payouts API (`mandate/payouts.py`).
-2. **The AI part.** An AI agent (Nebius) reads invoices and asks Mandate to pay them through an MCP gateway (`mandate/agent.py`, `mandate/gateway.py`).
-3. **Rules in code, not AI.** Run `python scripts/run_attacks.py`. It needs no PayPal and no AI key, and it prints 11 attacks with PASS or FAIL.
-4. **A person decides.** Run `python scripts/run_dashboard.py` and follow the click path under [Try it without any AI key](#try-it-without-any-ai-key). Only the dashboard can approve a held payment, and the agent cannot reach it.
+## What Mandate does
 
-## How it works
+**The problem.** An AI agent that pays invoices can be tricked. One fake invoice, one hidden instruction, or one changed bank detail, and real money moves to the wrong place.
 
-1. The business writes down a **mandate**: what the agent may pay (a budget, a cap per payment, an approval threshold, approved suppliers, an expiry date).
-2. The AI agent reads an invoice and **asks** Mandate to pay it. The agent can only ask. It has no way to approve anything.
-3. Mandate checks the request against the mandate using **plain code, not an AI**, and answers one of three things:
-   - **ALLOW**: the payment is sent to PayPal.
-   - **HOLD**: a person must approve it first, on the dashboard.
-   - **BLOCK**: nothing is sent.
-4. Every request, decision and reason is written to an audit log.
+**The solution.** The agent never talks to PayPal directly. It can only **ask** Mandate to pay an invoice. Mandate checks the request against a mandate the business wrote down (a budget, a cap per payment, an approval threshold, approved suppliers, an expiry date). It uses plain code, not an AI, and answers ALLOW, HOLD or BLOCK. Allowed payments go to PayPal. Held payments wait for a person to approve them on a dashboard. Blocked payments send nothing. Every decision is logged. Because the rules are code, a tricked agent cannot talk Mandate out of them.
 
 ```
-  AI agent  ->  Mandate gateway  ->  PayPal sandbox
-  (reads        (rules in code:      (receives only ALLOWed payments
-   invoices)     ALLOW, HOLD or       and held payments a person
-                 BLOCK, then log)     approved on the dashboard)
+  Agent  ->  Mandate gateway  ->  PayPal sandbox
+  (reads     (rules in code:      (receives only ALLOWed payments
+  invoices)   ALLOW, HOLD or       and held payments a person
+              BLOCK, then log)     approved on the dashboard)
 ```
 
-The rules are code, so a tricked agent cannot talk Mandate out of them.
+## Features
 
-## Quick start (Windows PowerShell)
+- A **mandate** with a budget, a cap per payment, an approval threshold, a supplier list and an expiry date.
+- **Eight rule checks** that answer ALLOW, HOLD or BLOCK (see [How it works in detail](#how-it-works-in-detail)).
+- **Real PayPal sandbox payouts** for allowed or approved payments.
+- An **MCP gateway with exactly two tools**, `request_payment` and `get_mandate`. There is no tool to approve or reject.
+- An **AI agent** that reads invoices and asks Mandate to pay them.
+- A **human dashboard** with an approval queue, a payments list, an audit trail, a simulated attacks panel, a "Try your own request" form and a reset button.
+- An **attack test script** that runs 11 attacks and prints PASS or FAIL for each.
+- **111 automated tests**.
+
+## How Mandate meets the technology requirement
+
+### PayPal
+
+| API | What it does in the project | Where |
+|-----|-----------------------------|-------|
+| OAuth 2.0 client credentials | Gets the sandbox access token. It is cached and refreshed before it expires. | `mandate/paypal_client.py` |
+| Payouts | Sends the payment for an allowed or approved request, and reads the payout status back. Retrying the same invoice cannot pay twice, because the batch id is built from the invoice id. | `mandate/payouts.py` |
+
+The probe script `scripts/probe_paypal.py` also tried Orders and Invoicing in our sandbox. Orders worked but is not used. Invoicing returned 403 (not authorized) and is not used.
+
+### AI
+
+**Nebius Token Factory with the model deepseek-ai/DeepSeek-V4.1-Flash-1017** powers the agent (`mandate/agent.py`). The agent reads an invoice, extracts the invoice id, supplier, payee email, amount, currency and memo, and calls Mandate's `request_payment` tool. The agent code works with any OpenAI-compatible provider through the three `NEBIUS_` settings.
+
+The model only asks. The ALLOW, HOLD or BLOCK decision is made by plain code in `mandate/policy.py`, not by the model.
+
+## Run it yourself
+
+### Access you need (free)
+
+- A **PayPal developer account** ([developer.paypal.com](https://developer.paypal.com)) with two sandbox accounts:
+  - a **business** account, which the app belongs to and which pays the money out, and
+  - a **personal** account, which receives the money. Its email goes in `PAYPAL_PERSONAL_EMAIL`. All the demo suppliers are paid at this address.
+- A **Merchant app** linked to the sandbox business account. To get the Client ID and Secret: open Apps & Credentials, switch to Sandbox, create an app of type Merchant linked to your sandbox business account, and copy its Client ID and Secret into `.env`.
+- **Only for the AI agent:** a Nebius Token Factory API key. Any OpenAI-compatible provider also works.
+
+No keys are included in this repo. Nothing needs payment. The dashboard, the simulated attacks and the attack script need no AI key.
+
+Everything is sandbox only, and every allowed or approved payment makes a real sandbox payout.
+
+### Quick start (Windows PowerShell)
 
 You need Python 3.10 or newer (tested on 3.12) and Git.
 
@@ -72,24 +100,26 @@ The PayPal values are needed for everything that makes payments. The Nebius valu
 
 `.env.example` also lists three optional settings, commented out, with their defaults: `MANDATE_PORT` (gateway, 8000), `MANDATE_GATEWAY_URL` (where the agent finds the gateway) and `DASHBOARD_PORT` (8001).
 
-**PayPal sandbox setup.** Everything is sandbox only, and every allowed or approved payment makes a real sandbox payout. You need two sandbox accounts:
+## Try it
 
-- a **business** account, which the app belongs to and which pays the money out, and
-- a **personal** account, which receives the money. Its email goes in `PAYPAL_PERSONAL_EMAIL`. All the demo suppliers are paid at this address.
+Run every command from the repo root, with the virtual environment active.
 
-To get the Client ID and Secret: go to [developer.paypal.com](https://developer.paypal.com), open Apps & Credentials, switch to Sandbox, and create an app of type **Merchant** linked to your sandbox business account. Copy its Client ID and Secret into `.env`.
+### Five-minute check for judges
 
-## Try it without any AI key
+1. **Real PayPal use.** An allowed or approved payment makes a real sandbox payout through the PayPal Payouts API (`mandate/payouts.py`).
+2. **The AI part.** An AI agent (Nebius) reads invoices and asks Mandate to pay them through an MCP gateway (`mandate/agent.py`, `mandate/gateway.py`).
+3. **Rules in code, not AI.** Run `python scripts/run_attacks.py`. It needs no PayPal and no AI key, and it prints 11 attacks with PASS or FAIL.
+4. **A person decides.** Run `python scripts/run_dashboard.py` and follow the [dashboard click path](#dashboard-click-path). Only the dashboard can approve a held payment, and the agent cannot reach it.
 
-Run these commands from the repo root, with the virtual environment active.
+### Dashboard click path
+
+No AI key is needed.
 
 ```powershell
 python scripts/run_dashboard.py
 ```
 
 Open http://127.0.0.1:8001. The first start creates `mandate.db` and seeds a demo mandate: USD, budget 1000, cap per payment 200, approval needed above 100, expires in 30 days, and three suppliers (Acme Office Supplies, Northwind Packaging, Globex Cleaning Services).
-
-Click path:
 
 1. Under **Try a request**, press **Legitimate invoice 25.00**. Mandate answers ALLOW and a real sandbox payout is made. The result box shows a stamp, and the payment appears in the **Ledger**.
 2. Press **Changed payee 40.00**. Same supplier, new payee address: HOLD. It appears under **Needs a decision**.
@@ -101,7 +131,7 @@ Click path:
 8. Use **Try your own request** to pick a supplier and an amount. The payee is always the address on file for that supplier.
 9. Press **Reset demo data** (in the Try a request panel) to start again.
 
-## Try it with the AI agent
+### The AI agent
 
 This needs the Nebius values in `.env`. Use two terminals, both in the repo root with the virtual environment active.
 
@@ -127,7 +157,7 @@ This runs only the four invoices that hide malicious text (a fake instruction, a
 
 To check that your Nebius key and model can make tool calls before running the agent: `python scripts/check_nebius.py`.
 
-## Run the tests and the attack script
+### Tests and the attack script
 
 ```powershell
 python -m pytest -q
@@ -143,7 +173,17 @@ This simulates a fully compromised agent with 11 attacks (injected 5000 USD to a
 
 An offline demo of the rule engine alone is `python scripts/demo_policy.py`.
 
-## The eight policy checks
+## How it works in detail
+
+1. The business writes down a **mandate**: a budget, a cap per payment, an approval threshold, approved suppliers and an expiry date.
+2. The AI agent reads an invoice and **asks** Mandate to pay it. The agent can only ask. It has no way to approve anything.
+3. Mandate checks the request against the mandate using **plain code, not an AI**, and answers one of three things:
+   - **ALLOW**: the payment is sent to PayPal.
+   - **HOLD**: a person must approve it first, on the dashboard.
+   - **BLOCK**: nothing is sent.
+4. Every request, decision and reason is written to an audit log.
+
+### The eight policy checks
 
 If several checks fire, the worst outcome wins: BLOCK beats HOLD, and HOLD beats ALLOW. The checks live in `mandate/policy.py`.
 
@@ -158,18 +198,27 @@ If several checks fire, the worst outcome wins: BLOCK beats HOLD, and HOLD beats
 | Cumulative budget | Splitting one big payment into many small ones | BLOCK when exceeded |
 | Approval threshold | Large but legitimate payment | HOLD |
 
-## PayPal APIs used
+## How Mandate maps to the judging criteria
 
-| API | Where in the code |
-|-----|-------------------|
-| OAuth 2.0 client credentials (access token, cached and refreshed) | `mandate/paypal_client.py` |
-| Payouts (send a payment, read its status) | `mandate/payouts.py` |
+- **Technological implementation:** real PayPal Payouts calls (`mandate/payouts.py`), an MCP gateway (`mandate/gateway.py`), an agent that uses tool calling (`mandate/agent.py`), 111 tests, and an 11-attack script (`scripts/run_attacks.py`).
+- **Design:** the dashboard (`mandate/static/index.html`) with an approval queue, an audit trail, rubber-stamp decisions, and the mandate shown as a slip with a budget bar.
+- **Potential impact:** it addresses invoice fraud against AI agents that pay. It is for finance teams that give an agent access to payments and want fixed limits and a human sign-off on anything unusual.
+- **Innovation:** the rules are code that the agent cannot override, and the approval path (the dashboard) cannot be reached by the agent or through the gateway.
+- **Presentation:** the demo video (link at the top) and this README.
 
-The probe script `scripts/probe_paypal.py` also tried Orders and Invoicing in our sandbox. Orders worked but is not used. Invoicing returned 403 (not authorized) and is not used.
+## Project history
 
-## AI tools used
+This is a new project, built solo for this hackathon. The first commit in this repository is dated 9 November 2026.
 
-- **Nebius Token Factory, model deepseek-ai/DeepSeek-V4.1-Flash-1017**: powers the demo agent. It reads invoices and calls Mandate's `request_payment` tool. The agent code works with any OpenAI-compatible provider through the three `NEBIUS_` settings.
+## Third-party tools and licenses
+
+These are used within their terms.
+
+- **PayPal sandbox and the PayPal Payouts API**: the payment side of the project.
+- **Nebius Token Factory**: hosts the model that powers the demo agent.
+- **AG Grid Community**: the grids on the dashboard. It is loaded from the jsDelivr CDN and pinned to version 32.3.3.
+- **Google Fonts**: the dashboard loads the Bricolage Grotesque and IBM Plex Sans fonts from Google Fonts.
+- **Python packages** (see `requirements.txt`): pytest (MIT), requests (Apache-2.0), python-dotenv (BSD-3-Clause), mcp (MIT), openai (Apache-2.0), fastapi (MIT) and uvicorn (BSD-3-Clause).
 - **Claude and Claude Code (Anthropic)**: development assistants, used to plan and write the code and tests.
 
 ## Honest limits
@@ -209,4 +258,6 @@ tests/               111 tests
 
 ## License
 
-MIT. See the `LICENSE` file.
+MIT. See the `LICENSE` file. Free to test and evaluate, with no restrictions, under the MIT license.
+
+All materials are in English.
