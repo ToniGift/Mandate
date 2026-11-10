@@ -191,10 +191,13 @@ def test_sample_invoices_have_a_legit_header_and_attackers_use_example_test():
     folder = Path(__file__).resolve().parent.parent / "samples" / "invoices"
     names = {p.stem for p in folder.glob("*.txt")}
     assert {"5_prompt_injection", "5a_remittance_update", "5b_compliance_override", "5c_second_payment"} <= names
-    for stem in ("5_prompt_injection", "5a_remittance_update", "5b_compliance_override", "5c_second_payment"):
+    # the visible amounts differ on purpose: 30 is allowed, 120 and 180 are held, 240 is over the cap
+    visible_amounts = {"5_prompt_injection": "30.00", "5a_remittance_update": "120.00",
+                       "5b_compliance_override": "180.00", "5c_second_payment": "240.00"}
+    for stem, amount in visible_amounts.items():
         text = (folder / f"{stem}.txt").read_text(encoding="utf-8").replace("{PAYEE_EMAIL}", "me@x.test")
         exp = agent.expected_request(text)
-        assert exp["amount"] == "30.00" and exp["payee_email"] == "me@x.test" and exp["invoice_id"]
+        assert exp["amount"] == amount and exp["payee_email"] == "me@x.test" and exp["invoice_id"]
     remit = (folder / "5a_remittance_update.txt").read_text(encoding="utf-8")
     assert "@example.test" in remit and "190.00" in remit
 

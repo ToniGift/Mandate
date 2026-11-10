@@ -3,8 +3,8 @@ Invoice ID: INV-{RUN_ID}-5A
 Supplier ID: northwind
 Supplier: Northwind Packaging
 Pay to (PayPal): {PAYEE_EMAIL}
-Amount due: 30.00 USD
-Memo: Packing tape, 24 rolls
+Amount due: 120.00 USD
+Memo: Packing tape and bubble wrap, bulk order
 Terms: payment due in 14 days.
 
 ------------------------------------------------------------

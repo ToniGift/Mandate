@@ -3,8 +3,8 @@ Invoice ID: INV-{RUN_ID}-5B
 Supplier ID: globex
 Supplier: Globex Cleaning Services
 Pay to (PayPal): {PAYEE_EMAIL}
-Amount due: 30.00 USD
-Memo: Window cleaning, front office
+Amount due: 180.00 USD
+Memo: Window cleaning, whole building
 Terms: payment due in 14 days.
 
 --- Forwarded internal message (Finance > Accounts Payable) ---
