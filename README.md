@@ -4,7 +4,7 @@ Mandate is a policy gateway that sits between an AI agent and PayPal, so an agen
 
 - **Demo video (under 3 minutes):** [add the YouTube link here before submitting]
 - **Source code:** https://github.com/ToniGift/Mandate
-- **License:** MIT, see the `LICENSE` file
+- **License:** [MIT](LICENSE)
 - **Live demo:** not hosted. The dashboard has no login, so it is meant to run on your own PC. The [Quick start](#quick-start-windows-powershell) takes about five minutes with free PayPal sandbox accounts.
 
 Built for the PayPal AI Hackathon. Everything runs on the PayPal sandbox, so no real money is sent.
@@ -258,6 +258,4 @@ tests/               111 tests
 
 ## License
 
-MIT. See the `LICENSE` file. Free to test and evaluate, with no restrictions, under the MIT license.
-
-All materials are in English.
+[MIT License](LICENSE). Free to test and evaluate, with no restrictions, under the MIT license.
