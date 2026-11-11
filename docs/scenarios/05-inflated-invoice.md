@@ -51,6 +51,18 @@ The usual maximum is for the owner, not the agent. An agent that knew the number
 
 The usual maximum is a number the owner puts into the mandate. Mandate does not learn it from past payments, and nothing in the code changes it while Mandate runs. In the demo it comes from `mandate/seed.py`. The values (60, 150 and 200) were chosen so that every sample invoice keeps its decision, while 95.00 to Acme is held. None of the eight sample invoices trips this rule on its own, so use the dashboard buttons below.
 
+## What it looks like
+
+These pictures come from a run in real mode, on the PayPal **sandbox**. Click a picture to open it at full size. Rows with an id that starts with `ATTACK-inflated` come from the red attack panel, and rows that start with `OWN-` come from **Try your own request**.
+
+**The held payments, and the boundary.** The **Needs a decision** queue holds four payments. The two `ATTACK-inflated-...` rows (acme, 95.00 USD) and the `OWN-...` row (acme, **61.00** USD) all have a reason that starts `typical_amount: amount ...`. The 61.00 row is the boundary case: one above Acme's usual maximum of 60. Below, in the **Payments** tab, the selected row `OWN-...d1ff` is for **globex**, also 61.00, and it is **PAID**. The same amount was not held for Globex, because Globex's usual maximum is 200. The strip under the grid shows the selected row: supplier, amount, payee (middle hidden) and status.
+
+[![The Needs a decision queue with held inflated invoices for Acme, and the Payments tab with a PAID 61.00 payment to Globex selected](../images/dashboard-inflated-queue-ledger.png)](../images/dashboard-inflated-queue-ledger.png)
+
+**The reason, in the audit trail.** The `ATTACK-inflated-...` row is a **HOLD**. Its reason starts `typical_amount: amount 95.00 is above...`, its outcome is `waiting for human appro...`, and `typical_amount: hold` is the only entry under "Checks that fired". No other rule objected.
+
+[![The Audit trail tab. The row ATTACK-inflated is a HOLD with the reason typical_amount and only typical_amount under Checks that fired](../images/dashboard-audit-trail-block.png)](../images/dashboard-audit-trail-block.png)
+
 ## Try it
 
 **Real mode:**

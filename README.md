@@ -2,7 +2,7 @@
 
 Mandate is a policy gateway that sits between an AI agent and PayPal, so an agent that pays invoices cannot be tricked into paying the wrong person or the wrong amount.
 
-![Mandate: ALLOW, HOLD and BLOCK stamps on three example requests, and the mandate card showing the cap per payment, the approval threshold and the budget](docs/images/mandate-overview.webp)
+[![Mandate: ALLOW, HOLD and BLOCK stamps on three example requests, and the mandate card showing the cap per payment, the approval threshold and the budget](docs/images/mandate-overview.webp)](docs/images/mandate-overview.webp)
 
 - **Demo video (under 3 minutes):** [add the YouTube link here before submitting]
 - **Source code:** https://github.com/ToniGift/Mandate

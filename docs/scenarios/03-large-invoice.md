@@ -15,6 +15,14 @@ A large invoice from a known supplier, to the right address, can be perfectly le
 
 Northwind's usual maximum is 150, so 150.00 does not trip the [typical amount](../rules/09-typical-amount.md) rule. The amount is also under the cap of 200.
 
+## What it looks like
+
+This picture comes from a run in real mode, on the PayPal **sandbox**. Click it to open it at full size.
+
+The **Payments** tab. Find the row `DEMO-large-...` (150.00 USD). It has the grey **REJECTED** stamp and no PayPal batch or status. The payment was held for being above the approval threshold, and then a person pressed **Reject**, so nothing was sent. Had they pressed **Approve**, the row would show **PAID**, like the `DEMO-changed_payee-...` (40.00) and `DEMO-legitimate-...` (25.00) rows below it.
+
+[![The Payments tab. The row DEMO-large, 150.00 USD, has a grey REJECTED stamp and no PayPal status, above two PAID rows](../images/dashboard-ledger-blocked.webp)](../images/dashboard-ledger-blocked.webp)
+
 ## Try it
 
 **Real mode:**

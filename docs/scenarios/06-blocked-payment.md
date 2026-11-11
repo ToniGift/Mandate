@@ -29,11 +29,15 @@ The other rules pass or have nothing to compare. [Payee change](../rules/04-paye
 
 The **Audit trail** tab after some simulated attacks. The BLOCK stamps are red, and the strip under the table lists the full reasons of the selected row (a payment of 250.00 to Acme, over the cap):
 
-![The Audit trail tab on the dashboard, with BLOCK and HOLD stamps, and the reasons for a blocked payment of 250.00 under the table](../images/dashboard-audit-trail-block.png)
+[![The Audit trail tab on the dashboard, with BLOCK and HOLD stamps, and the reasons for a blocked payment of 250.00 under the table](../images/dashboard-audit-trail-block.png)](../images/dashboard-audit-trail-block.png)
+
+*Click the picture to open it at full size.*
 
 The **Payments** tab. BLOCKED rows have no PayPal batch and no PayPal status, because nothing was sent. The PAID rows below them do:
 
-![The Payments tab on the dashboard, with BLOCKED, HELD, REJECTED and PAID rows](../images/dashboard-ledger-blocked.webp)
+[![The Payments tab on the dashboard, with BLOCKED, HELD, REJECTED and PAID rows](../images/dashboard-ledger-blocked.webp)](../images/dashboard-ledger-blocked.webp)
+
+*Click the picture to open it at full size.*
 
 ## Other BLOCK cases
 

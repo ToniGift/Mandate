@@ -40,6 +40,16 @@ If a fooled agent had asked for what the hidden text says, the rules would answe
 | 5000 USD to Acme at the address on file | [Cap](../rules/06-per-payment-cap.md), [budget](../rules/07-cumulative-budget.md), [approval threshold](../rules/08-approval-threshold.md), [typical amount](../rules/09-typical-amount.md) | **BLOCK** |
 | 190.00 to Northwind at a new address | [Payee change](../rules/04-payee-change.md), [approval threshold](../rules/08-approval-threshold.md), [typical amount](../rules/09-typical-amount.md) | **HOLD** |
 
+## What it looks like
+
+This is the simulated attack as it appears on the dashboard (the red panel, **no AI involved**), from a run in real mode on the PayPal **sandbox**. Click the picture to open it at full size.
+
+In the **Audit trail**, find the row `ATTACK-injected-...`. It has the red **BLOCK** stamp, the reason `payee_allow_list: supplier 'unknown-su...` (an unknown supplier), the outcome `nothing was sent`, and `payee_allow_list: block, ...` under "Checks that fired". [Scenario 6](06-blocked-payment.md) explains every line of this row. The other rows show what the rules do with the other requests made in the same run.
+
+[![The Audit trail tab. The row ATTACK-injected has a red BLOCK stamp, the reason payee_allow_list, and the outcome nothing was sent](../images/dashboard-audit-trail-block.png)](../images/dashboard-audit-trail-block.png)
+
+The four sample invoices that the AI agent reads are not shown in a picture. The agent prints a table in the terminal instead (`python scripts/run_agent.py --injection-only`).
+
 ## Try it
 
 **Without the AI agent** (real mode or offline mode): open http://127.0.0.1:8001 and press **Injected payment: 5000 USD to attacker@example.test** in the red panel. It **sends nothing**, in both modes.

@@ -23,6 +23,18 @@ A person then chooses:
 
 The dashboard hides the middle of email addresses. The agent is told even less: the gateway only says that the payee email does not match the one on file, and never gives it the address on file.
 
+## What it looks like
+
+These pictures come from a run in real mode, on the PayPal **sandbox**. Click a picture to open it at full size. The dashboard hides the middle of every email address.
+
+**The held payment, and the two choices.** In the **Needs a decision** queue (the top of this picture), the row `ATTACK-changed...` (acme, 60.00 USD) has the reason `payee_change: payee for Ac...` and an **Approve** and a **Reject** button. In the **Audit trail** below, the same request is a **HOLD** row with the reason `payee_change: payee for Acme Office S...` and the outcome `waiting for human appro...`, which is "waiting for human approval". This row comes from the red attack panel (60.00 to an address that is not on file). The **Changed payee 40.00** button gives the same kind of row.
+
+[![The Needs a decision queue with a held changed-payee payment and its Approve and Reject buttons, above the Audit trail with a HOLD row for payee_change](../images/dashboard-audit-trail-block.png)](../images/dashboard-audit-trail-block.png)
+
+**After a person approves.** In the **Payments** tab, the row `DEMO-changed_payee-...` (40.00 USD, payee `ne***t@example.test`, the new address) shows **PAID**. It was held, and then a person pressed **Approve**, so the payout went to the **new** address. The row `ATTACK-changed_payee-...` (60.00 USD) is still **HELD**, because nobody has decided yet.
+
+[![The Payments tab. The row DEMO-changed_payee, 40.00 USD, is PAID to the new address, and the row ATTACK-changed_payee, 60.00 USD, is still HELD](../images/dashboard-ledger-blocked.webp)](../images/dashboard-ledger-blocked.webp)
+
 ## Try it
 
 **Real mode:**

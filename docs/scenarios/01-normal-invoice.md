@@ -14,6 +14,18 @@ In real mode the payout is a real payout in the PayPal **sandbox**. In offline d
 |---------|-----------------|--------|
 | Supplier Acme Office Supplies (`acme`). Payee: the address on file. Amount: 25.00 USD. | None. All nine rules pass. | **ALLOW**, status PAID |
 
+## What it looks like
+
+These pictures come from a run in real mode, on the PayPal **sandbox**. Rows whose invoice id starts with `DEMO-legitimate` were made by the **Legitimate invoice 25.00** button. Click a picture to open it at full size.
+
+The **Payments** tab. Find the row `DEMO-legitimate-...` (25.00 USD, near the bottom). It has the green **PAID** stamp and a PayPal status of PENDING, which is the status PayPal returned for the payout. The **Refresh payout status** button asks PayPal for the current status.
+
+[![The Payments tab on the dashboard. The row DEMO-legitimate, 25.00 USD, has a green PAID stamp and the PayPal status PENDING](../images/dashboard-ledger-blocked.webp)](../images/dashboard-ledger-blocked.webp)
+
+The **Audit trail** tab. The row `DEMO-legitimate-...` has the green **ALLOW** stamp, the reason `all checks passed`, the outcome `payout accepted, batch ...`, and `all passed` under "Checks that fired". That is what a normal invoice looks like: every rule passed, so nothing was held or blocked.
+
+[![The Audit trail tab on the dashboard. The row DEMO-legitimate has a green ALLOW stamp, the reason all checks passed, and the outcome payout accepted](../images/dashboard-audit-trail-block.png)](../images/dashboard-audit-trail-block.png)
+
 ## Try it
 
 **Real mode** (the default, with the PayPal sandbox):
