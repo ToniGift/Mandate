@@ -275,9 +275,7 @@ An offline demo of the rule engine alone is `python scripts/demo_policy.py`.
 
 ## Project history
 
-This is a new project, built solo for this hackathon. The first commit in this repository is dated 9 November 2026.
-
-The rule engine `mandate/policy.py` was drafted first and then left alone. On 11 November 2026 one check (`typical_amount`) and one optional supplier field (`typical_max`) were added to it. No other check was changed.
+Mandate is a new solo project. I first drafted the plans in October 2026, inside the hackathon's submission period (1 Oct to 12 Nov 2026). I started the project on 5 Nov 2026, and the first code was written on 7 Nov 2026: the rule engine (mandate/policy.py) and its first tests were drafted with Claude in a chat and added in the first commit. Everything else was written with Claude Code from 9 Nov 2026, with me running, testing and reviewing it. On 11 Nov 2026 one more check (typical_amount) and one optional supplier field (typical_max) were added. The git history was recreated on 10 Nov 2026, so the commit dates do not show the real start of the work.
 
 ## Third-party tools and licenses
 
