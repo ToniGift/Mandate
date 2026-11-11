@@ -283,7 +283,7 @@ def test_render_yaml_matches_the_plan_and_holds_no_secrets():
 def test_readme_has_the_hosted_demo_section():
     text = (ROOT / "README.md").read_text(encoding="utf-8")
     section = text.split("## Hosted demo", 1)[1].split("\n## ", 1)[0]
-    for needle in ("[add the Render URL here once it is deployed]", "offline demo mode", "simulated",
+    for needle in ("https://mandate-jux7.onrender.com/", "offline demo mode", "simulated",
                    "No keys are on the server", "about a minute to wake up", "Data resets when it sleeps",
                    "default and is what the demo video shows"):
         assert needle in section, needle

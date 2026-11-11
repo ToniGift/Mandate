@@ -228,6 +228,66 @@ def test_reset_clears_payments_and_audit_and_restores_budget(client, payout):
     assert post(client, "/api/demo/large").json()["decision"] == "HOLD"
 
 
+# ---- texts that depend on the mode (offline demo or real PayPal sandbox) ---------------------------------
+
+REAL_NOTE = "The legitimate invoice makes a real PayPal sandbox payment."
+OFFLINE_NOTE = "Offline demo: this payment is simulated, PayPal is not contacted."
+REAL_FOOTER = "Payments run on the PayPal sandbox, so no real money moves."
+OFFLINE_FOOTER = "Offline demo: payouts are simulated and PayPal is not contacted. No real money moves."
+
+
+def test_the_page_has_both_versions_of_each_mode_dependent_text_and_shows_neither_until_the_mode_is_known(client):
+    html = client.get("/").text
+    for text, mode in ((REAL_NOTE, "real"), (OFFLINE_NOTE, "offline"), (REAL_FOOTER, "real"), (OFFLINE_FOOTER, "offline")):
+        assert f'<span data-mode="{mode}" hidden>{text}</span>' in html, text
+    # the script shows the matching version, from the same field that drives the banner
+    assert 'el.dataset.mode !== (offline ? "offline" : "real")' in html
+    assert "applyMode(!!m.fake_payouts)" in html
+    assert "Payouts here are simulated, so there is nothing to undo at PayPal." in html
+    assert "Payments already sent to the PayPal sandbox are not undone." in html  # real mode text is unchanged
+
+
+def test_no_real_paypal_claim_is_left_unconditional_in_the_page(client):
+    """Every sentence that says money really goes through PayPal sits inside a data-mode="real" element."""
+    html = client.get("/").text
+    for claim in (REAL_NOTE, REAL_FOOTER):
+        assert html.count(claim) == 1  # said once, and only in its real-mode element
+        assert html.split(claim)[0].endswith('<span data-mode="real" hidden>'), claim
+
+
+def test_real_mode_outcome_text_is_unchanged(client, payout):
+    r = post(client, "/api/demo/legitimate").json()
+    assert r["outcome"] == "payout accepted, batch BATCH-1, PayPal status PENDING"
+    audit = client.get("/api/audit").json()
+    assert audit[0]["outcome"] == "payout accepted, batch BATCH-1, PayPal status PENDING"
+    assert client.get("/api/mandate").json()["fake_payouts"] is False
+
+
+def test_offline_mode_outcome_text_says_simulated_not_paypal(client, monkeypatch):
+    monkeypatch.setenv("MANDATE_FAKE_PAYOUTS", "1")
+
+    def no_network(*args, **kwargs):
+        raise AssertionError("offline mode must not contact PayPal")
+
+    with patch("mandate.payouts.PayPalClient", no_network), patch("requests.post", no_network), \
+            patch("requests.request", no_network):
+        paid = post(client, "/api/demo/legitimate").json()
+        held = post(client, "/api/demo/large").json()
+        approved = post(client, f"/api/payments/{held['payment_id']}/approve").json()
+    for r in (paid, approved):
+        assert "simulated payout accepted, batch FAKE-" in r["outcome"]
+        assert "payout status SUCCESS" in r["outcome"] and "PayPal" not in r["outcome"]
+    outcomes = [row["outcome"] for row in client.get("/api/audit").json()]
+    assert any("simulated payout accepted" in o for o in outcomes)
+    assert not any("PayPal status" in o for o in outcomes if "FAKE-" in o)
+
+
+def test_a_real_payout_is_never_reworded_even_in_offline_mode(client, monkeypatch, payout):
+    post(client, "/api/demo/legitimate")  # a real-mode payment (the payout is mocked), batch BATCH-1
+    monkeypatch.setenv("MANDATE_FAKE_PAYOUTS", "1")
+    assert client.get("/api/audit").json()[0]["outcome"] == "payout accepted, batch BATCH-1, PayPal status PENDING"
+
+
 # ---- offline demo mode ----------------------------------------------------------------------------
 
 def test_real_mode_is_the_default_and_the_api_says_so(client):

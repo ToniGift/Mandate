@@ -143,7 +143,9 @@
   .own select, .own input { font: inherit; padding: 8px 10px; border: 2px solid var(--ink); border-radius: 2px;
                             background: var(--slip); color: var(--ink); width: 100%; }
   .own button { margin-top: 4px; }
-  .detail { margin-top: 8px; padding: 8px 12px; background: var(--slip); border-left: 4px solid var(--ink); min-height: 3em; }
+  /* the strip under a grid: hidden until there is something to say (a selected row, or a result) */
+  .detail { margin-top: 8px; padding: 6px 12px; background: var(--slip); border-left: 4px solid var(--ink); }
+  .detail[hidden] { display: none; }
   .detail div + div { margin-top: 2px; }
   .tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--ink); }
   .tab { font-weight: 600; padding: 8px 16px; border: 2px solid transparent; border-bottom: none; background: transparent;
@@ -170,19 +172,19 @@
   .result .title { font-weight: 600; }
 
   /* ---- rubber stamps ---- */
-  .stamp { display: inline-block; font-family: var(--display); font-weight: 800; font-size: 13px; letter-spacing: .06em;
+  .stamp { display: inline-block; font-family: var(--display); font-weight: 800; font-size: 14px; letter-spacing: .05em;
            font-stretch: 75%; font-variation-settings: "wdth" 75; line-height: 1; padding: 3px 8px 2px;
-           border: 3px double currentColor; border-radius: 2px; transform: rotate(-3deg); color: var(--c, var(--ink-soft));
-           /* pinholes in the ink, CSS only */
-           -webkit-mask-image: radial-gradient(circle at 20% 30%, transparent 0 .9px, #000 1.3px), radial-gradient(circle at 70% 65%, transparent 0 .9px, #000 1.3px);
-           mask-image: radial-gradient(circle at 20% 30%, transparent 0 .9px, #000 1.3px), radial-gradient(circle at 70% 65%, transparent 0 .9px, #000 1.3px);
-           -webkit-mask-size: 9px 7px, 13px 11px; mask-size: 9px 7px, 13px 11px;
-           -webkit-mask-composite: source-in; mask-composite: intersect; }
+           border: 3px double currentColor; border-radius: 2px; transform: rotate(-3deg); color: var(--c, var(--ink-soft)); }
   .stamp.allow { --c: var(--teal); }
   .stamp.hold { --c: var(--amber); }
   .stamp.block { --c: var(--oxblood); }
   .stamp.neutral { --c: var(--ink-soft); }
-  .stamp.big { font-size: 24px; padding: 6px 12px 4px; }
+  /* the big stamps get pinholes in the ink (CSS only). Small stamps stay clean so the words stay readable. */
+  .stamp.big { font-size: 24px; padding: 6px 12px 4px;
+               -webkit-mask-image: radial-gradient(circle at 20% 30%, transparent 0 .9px, #000 1.3px), radial-gradient(circle at 70% 65%, transparent 0 .9px, #000 1.3px);
+               mask-image: radial-gradient(circle at 20% 30%, transparent 0 .9px, #000 1.3px), radial-gradient(circle at 70% 65%, transparent 0 .9px, #000 1.3px);
+               -webkit-mask-size: 9px 7px, 13px 11px; mask-size: 9px 7px, 13px 11px;
+               -webkit-mask-composite: source-in; mask-composite: intersect; }
   .stamp.land { animation: land .2s ease-out; }
   @keyframes land {
     from { transform: rotate(-3deg) scale(1.15); opacity: .5; }
@@ -234,7 +236,7 @@
 
   /* tablet and below: one column, in the order a person needs: decisions, then the buttons, then the record */
   @media (max-width: 999px) {
-    .work { display: flex; flex-direction: column; gap: 28px; }
+    .work { display: flex; flex-direction: column; gap: 28px; align-items: stretch; }  /* full width, not shrunk to the content */
     .main { display: contents; }
     .main section { margin-bottom: 0; }
     #queue-section { order: 1; }
@@ -331,9 +333,9 @@
           <h2 id="queue-title">Needs a decision</h2>
           <span id="queue-count"></span>
         </div>
-        <div id="queue-grid" class="ag-theme-quartz" style="height: 316px"></div>
+        <div id="queue-grid" class="ag-theme-quartz" style="height: 126px"></div>
         <div id="queue-cards" class="cards"></div>
-        <div class="detail" id="queue-detail" role="status" aria-live="polite">Select a held payment to read why it was held.</div>
+        <div class="detail" id="queue-detail" role="status" aria-live="polite" hidden></div>
       </section>
 
       <section id="ledger-section" aria-labelledby="ledger-title">
@@ -343,12 +345,12 @@
           <button class="tab" role="tab" id="tab-audit" aria-controls="panel-audit" aria-selected="false" tabindex="-1">Audit trail</button>
         </div>
         <div class="panel" role="tabpanel" id="panel-payments" aria-labelledby="tab-payments">
-          <div id="payments-grid" class="ag-theme-quartz" style="height: 380px"></div>
-          <div class="detail" id="payments-detail" role="status" aria-live="polite">Select a payment to see its details.</div>
+          <div id="payments-grid" class="ag-theme-quartz" style="height: 126px"></div>
+          <div class="detail" id="payments-detail" role="status" aria-live="polite" hidden></div>
         </div>
         <div class="panel" role="tabpanel" id="panel-audit" aria-labelledby="tab-audit" hidden>
-          <div id="audit-grid" class="ag-theme-quartz" style="height: 380px"></div>
-          <div class="detail" id="audit-detail" role="status" aria-live="polite">Select a row to read the full reasons.</div>
+          <div id="audit-grid" class="ag-theme-quartz" style="height: 126px"></div>
+          <div class="detail" id="audit-detail" role="status" aria-live="polite" hidden></div>
         </div>
       </section>
     </main>
@@ -375,7 +377,7 @@
           <button class="btn solid" type="submit" id="own-send">Send</button>
           <p class="soft small">The payee is the supplier's address on file. You choose only who and how much.</p>
         </form>
-        <p class="soft small note" id="message">The legitimate invoice makes a real PayPal sandbox payment.</p>
+        <p class="soft small note" id="message"><span data-mode="real" hidden>The legitimate invoice makes a real PayPal sandbox payment.</span><span data-mode="offline" hidden>Offline demo: this payment is simulated, PayPal is not contacted.</span></p>
         <div class="result" id="demo-result" aria-live="polite"></div>
       </section>
 
@@ -409,7 +411,7 @@
     <div>
       <h3>Good to know</h3>
       <ul>
-        <li>Payments run on the PayPal sandbox, so no real money moves.</li>
+        <li><span data-mode="real" hidden>Payments run on the PayPal sandbox, so no real money moves.</span><span data-mode="offline" hidden>Offline demo: payouts are simulated and PayPal is not contacted. No real money moves.</span></li>
         <li>Decisions come from rules written in code, not from an AI model.</li>
         <li>Every request is written to the audit trail.</li>
       </ul>
@@ -470,7 +472,33 @@ function line(text, cls) {
   d.textContent = text;
   return d;
 }
-function setDetail(id, lines) { $(id).replaceChildren(...lines.map((t) => line(t))); }
+function setDetail(id, lines) {
+  $(id).replaceChildren(...lines.map((t) => line(t)));
+  $(id).hidden = false;
+}
+function clearDetail(id) {
+  $(id).replaceChildren();
+  $(id).hidden = true;
+}
+
+// Offline demo mode (payouts are simulated) or real mode (PayPal sandbox payouts). The server says which
+// in GET /api/mandate. Texts that depend on the mode exist in both versions in the page, marked with
+// data-mode="real" or data-mode="offline", and only the matching one is shown.
+let offlineMode = false;
+function applyMode(offline) {
+  offlineMode = offline;
+  $("demo-banner").hidden = !offline;
+  document.querySelectorAll("[data-mode]").forEach((el) => { el.hidden = el.dataset.mode !== (offline ? "offline" : "real"); });
+}
+
+// A grid is only as tall as its rows: a short empty box when there is nothing to show, growing with
+// the rows up to maxRows, and scrolling inside after that.
+const GRID_HEADER = 41;  // --ag-header-height (40) plus the 1px line under the header
+const GRID_EMPTY_BODY = 84;  // room for the "nothing here" message
+function fitGrid(elementId, rowCount, rowHeight, maxRows) {
+  const body = rowCount ? Math.min(rowCount, maxRows) * rowHeight : GRID_EMPTY_BODY;
+  $(elementId).style.height = (GRID_HEADER + body + 2) + "px";  // 2px for the grid border
+}
 
 // ---- grids -----------------------------------------------------------------
 // Every long text is one line with "...", the full text is in a tooltip and in the strip under the grid.
@@ -498,6 +526,14 @@ function hideWhenNarrow(elementId, api, showAt) {
     for (const [col, min] of Object.entries(showAt)) api.setColumnsVisible([col], w >= min);
   };
   new ResizeObserver(apply).observe(el);
+}
+
+// What the detail strip says about the payout. A simulated payout (FAKE- id) is never called a PayPal one.
+function payoutNote(p) {
+  const batch = p.paypal_batch_id;
+  if (batch && batch.startsWith("FAKE-")) return ", simulated payout " + batch + " (" + (p.paypal_status || "no status yet") + ")";
+  if (batch) return ", PayPal batch " + batch + " (" + (p.paypal_status || "no status yet") + ")";
+  return offlineMode ? ", no payout made" : ", nothing sent to PayPal";
 }
 
 // Approve and Reject buttons for one held payment (used in the grid and in the phone cards)
@@ -574,12 +610,13 @@ const paymentsGrid = makeGrid("payments-grid", [
   { colId: "paypal_status", headerName: "PayPal status", field: "paypal_status", width: 130 },
   textCol({ colId: "paypal_batch_id", headerName: "PayPal batch", field: "paypal_batch_id", width: 150 }),
 ], {
-  defaultColDef: { sortable: true, filter: true, resizable: true, floatingFilter: true },
+  // no filter row under the headers: sorting is on, and filtering is in each column's header menu
+  defaultColDef: { sortable: true, filter: true, resizable: true },
   overlayNoRowsTemplate: '<span class="empty">No payments yet. Use Try a request to make one.</span>',
   onGridReady: (e) => hideWhenNarrow("payments-grid", e.api, { created_at: 560, payee_email: 700, paypal_status: 830, paypal_batch_id: 990 }),
   onRowClicked: (e) => setDetail("payments-detail", [
     "Invoice " + e.data.invoice_id + ", " + e.data.supplier_id + ", " + e.data.amount + " " + e.data.currency + ", payee " + e.data.payee_email,
-    "Status " + e.data.status + (e.data.paypal_batch_id ? ", PayPal batch " + e.data.paypal_batch_id + " (" + (e.data.paypal_status || "no status yet") + ")" : ", nothing sent to PayPal"),
+    "Status " + e.data.status + payoutNote(e.data),
   ]),
 });
 
@@ -596,7 +633,7 @@ const auditGrid = makeGrid("audit-grid", [
   textCol({ colId: "outcome", headerName: "Outcome", field: "outcome", flex: 2, minWidth: 170 }),
   textCol({ colId: "checks", headerName: "Checks that fired", flex: 2, minWidth: 170, valueGetter: (p) => checksText(p.data) }),
 ], {
-  defaultColDef: { sortable: true, filter: true, resizable: true, floatingFilter: true },
+  defaultColDef: { sortable: true, filter: true, resizable: true },
   overlayNoRowsTemplate: '<span class="empty">No decisions logged yet.</span>',
   onGridReady: (e) => hideWhenNarrow("audit-grid", e.api, { time: 560, outcome: 740, checks: 920 }),
   onRowClicked: (e) => setDetail("audit-detail", [
@@ -651,7 +688,7 @@ function clearBox(box) { box.replaceChildren(); box.classList.remove("show"); }
 // ---- loading data ----------------------------------------------------------
 function renderMandate(m) {
   const money = (v) => Number(v).toFixed(2);
-  $("demo-banner").hidden = !m.fake_payouts;  // offline demo mode: say so on every screen
+  applyMode(!!m.fake_payouts);  // offline demo mode: say so on every screen
   $("m-currency").textContent = m.currency;
   $("own-currency").textContent = m.currency;
   $("m-cap").textContent = money(m.per_payment_cap) + " " + m.currency;
@@ -707,6 +744,9 @@ async function loadAll() {
     renderQueueCards(held);
     paymentsGrid.setGridOption("rowData", payments);
     auditGrid.setGridOption("rowData", audit);
+    fitGrid("queue-grid", held.length, 52, 5);
+    fitGrid("payments-grid", payments.length, 44, 8);
+    fitGrid("audit-grid", audit.length, 44, 8);
     const countStamp = () => (held.length ? stamp(held.length + " waiting", "", "hold") : stamp("All clear", "", "allow"));
     $("queue-count").replaceChildren(countStamp());
     $("n-count").replaceChildren(countStamp());
@@ -806,16 +846,17 @@ $("refresh-btn").addEventListener("click", async (event) => {
 $("reset-btn").addEventListener("click", async (event) => {
   const ok = window.confirm(
     "Reset the demo?\n\nThis deletes all payments and the audit log and restores the starting budget. " +
-    "Payments already sent to the PayPal sandbox are not undone.");
+    (offlineMode ? "Payouts here are simulated, so there is nothing to undo at PayPal."
+                 : "Payments already sent to the PayPal sandbox are not undone."));
   if (!ok) return;
   event.target.disabled = true;
   try {
     await api("POST", "/api/reset");
     clearBox($("demo-result"));
     clearBox($("attack-result"));
-    setDetail("queue-detail", ["Select a held payment to read why it was held."]);
-    setDetail("payments-detail", ["Select a payment to see its details."]);
-    setDetail("audit-detail", ["Select a row to read the full reasons."]);
+    clearDetail("queue-detail");
+    clearDetail("payments-detail");
+    clearDetail("audit-detail");
     $("message").textContent = "Demo reset. The budget is back to its starting amount.";
   } catch (e) {
     $("message").textContent = "Reset failed: " + e.message + ".";

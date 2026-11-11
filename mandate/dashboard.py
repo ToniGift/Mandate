@@ -92,10 +92,18 @@ def mask(text: str | None) -> str | None:
     return _EMAIL.sub(_mask_match, text) if text else text
 
 
+def outcome_text(text: str | None) -> str | None:
+    """A simulated payout (batch id FAKE-...) is described as simulated, never as a PayPal one.
+    It goes by the batch id, so a real payout's text is never changed."""
+    if text and "batch FAKE-" in text:
+        text = text.replace("payout accepted", "simulated payout accepted").replace("PayPal status", "payout status")
+    return mask(text)
+
+
 def _result(r: service.Result) -> dict:
     out = asdict(r)
     out["reasons"] = [mask(x) for x in r.reasons]
-    out["outcome"] = mask(r.outcome)
+    out["outcome"] = outcome_text(r.outcome)
     return out
 
 
@@ -141,7 +149,7 @@ def list_audit():
         "id": r["id"], "time": r["time"], "invoice_id": r["invoice_id"], "decision": r["decision"],
         "reasons": [mask(x) for x in json.loads(r["reasons"])],
         "checks": json.loads(r["checks"]),
-        "outcome": mask(r["outcome"]),
+        "outcome": outcome_text(r["outcome"]),
     } for r in reversed(rows)]
 
 

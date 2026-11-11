@@ -5,7 +5,8 @@ Mandate is a policy gateway that sits between an AI agent and PayPal, so an agen
 - **Demo video (under 3 minutes):** [add the YouTube link here before submitting]
 - **Source code:** https://github.com/ToniGift/Mandate
 - **License:** [MIT](LICENSE)
-- **Live demo (offline demo mode):** [add the Render URL here once it is deployed]. See [Hosted demo](#hosted-demo). The real PayPal sandbox run is the default mode and is what the video shows. To run it yourself, the [Quick start](#quick-start-windows-powershell) takes about five minutes with free PayPal sandbox accounts.
+- **Hosted demo:** https://mandate-jux7.onrender.com/ (offline mode: payouts are simulated and PayPal is not contacted; the free server can take about a minute to wake up, and its data resets when it sleeps).
+- **Real PayPal sandbox run:** the default mode. Run it on your own PC with the Quick start below (about five minutes with free PayPal sandbox accounts). The demo video shows this mode.
 
 Built for the PayPal AI Hackathon. Everything runs on the PayPal sandbox, so no real money is sent.
 
@@ -120,7 +121,7 @@ Open http://127.0.0.1:8001 and follow the same [dashboard click path](#dashboard
 
 ## Hosted demo
 
-**URL:** [add the Render URL here once it is deployed]
+**URL:** https://mandate-jux7.onrender.com/
 
 The hosted demo is the dashboard running on a free [Render](https://render.com) web service, set up by `render.yaml`. Real mode, with the PayPal sandbox, is the default and is what the demo video shows. The hosted copy is different:
 
