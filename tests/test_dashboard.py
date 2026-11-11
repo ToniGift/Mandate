@@ -228,6 +228,42 @@ def test_reset_clears_payments_and_audit_and_restores_budget(client, payout):
     assert post(client, "/api/demo/large").json()["decision"] == "HOLD"
 
 
+# ---- offline demo mode ----------------------------------------------------------------------------
+
+def test_real_mode_is_the_default_and_the_api_says_so(client):
+    assert client.get("/api/mandate").json()["fake_payouts"] is False
+
+
+def test_offline_mode_shows_in_the_api_and_the_page_has_the_banner(client, monkeypatch):
+    monkeypatch.setenv("MANDATE_FAKE_PAYOUTS", "1")
+    assert client.get("/api/mandate").json()["fake_payouts"] is True
+    html = client.get("/").text
+    assert "Offline demo: payouts are simulated, PayPal is not contacted." in html
+    assert 'id="demo-banner"' in html and "m.fake_payouts" in html  # shown or hidden from this API field
+
+
+def test_offline_mode_pays_and_approves_with_no_mock_and_no_network(client, monkeypatch):
+    monkeypatch.setenv("MANDATE_FAKE_PAYOUTS", "1")
+    for name in ("PAYPAL_PERSONAL_EMAIL", "PAYPAL_CLIENT_ID", "PAYPAL_CLIENT_SECRET"):
+        monkeypatch.delenv(name, raising=False)
+
+    def no_network(*args, **kwargs):
+        raise AssertionError("offline mode must not contact PayPal")
+
+    with patch("mandate.payouts.PayPalClient", no_network), patch("requests.post", no_network), \
+            patch("requests.request", no_network):
+        paid = post(client, "/api/demo/legitimate").json()
+        held = post(client, "/api/demo/large").json()
+        approved = post(client, f"/api/payments/{held['payment_id']}/approve").json()
+        refreshed = post(client, "/api/refresh").json()
+        reset = post(client, "/api/reset").json()
+
+    assert (paid["decision"], paid["status"]) == ("ALLOW", "PAID") and "FAKE-" in paid["outcome"]
+    assert approved["status"] == "PAID" and "FAKE-" in approved["outcome"]
+    assert refreshed == {"checked": 0, "updated": 0, "failed": 0}  # simulated payouts are already complete
+    assert reset == {"reset": True}
+
+
 def test_gateway_still_exposes_exactly_two_tools_and_no_approval():
     names = {t.name for t in asyncio.run(gateway.mcp.list_tools())}
     assert names == {"request_payment", "get_mandate"}

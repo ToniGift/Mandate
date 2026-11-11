@@ -7,11 +7,15 @@ import time
 import requests
 from dotenv import load_dotenv
 
+from mandate.hosting import public_mode
+
 REFRESH_MARGIN_SECONDS = 60  # fetch a new token this long before the old one expires
 
 
 class PayPalClient:
     def __init__(self) -> None:
+        if public_mode():  # a public server never reads or uses PayPal credentials
+            raise RuntimeError("PayPal credentials are never used on a public server")
         load_dotenv()
         self.client_id = os.environ.get("PAYPAL_CLIENT_ID", "")
         self.client_secret = os.environ.get("PAYPAL_CLIENT_SECRET", "")

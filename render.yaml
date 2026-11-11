@@ -1,0 +1,17 @@
+# Render blueprint for the hosted demo: one free Python web service.
+# It runs in offline demo mode (simulated payouts). No secrets belong in this file or on this service.
+services:
+  - type: web
+    name: mandate-demo
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python scripts/run_dashboard.py
+    healthCheckPath: /api/mandate
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.10
+      - key: DASHBOARD_HOST
+        value: 0.0.0.0
+      - key: MANDATE_FAKE_PAYOUTS
+        value: "1"

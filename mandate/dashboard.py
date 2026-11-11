@@ -1,7 +1,8 @@
 """Human dashboard: approval queue, payments, audit log.
 
 Approve and reject exist ONLY here. The AI agent and the MCP gateway have no way to call them.
-The dashboard listens on localhost only and reads the same SQLite database as the gateway.
+By default the dashboard listens on localhost only and reads the same SQLite database as the gateway.
+On a public server (see mandate/hosting.py) it runs in offline demo mode and limits POST requests.
 """
 from __future__ import annotations
 
@@ -9,28 +10,61 @@ import json
 import re
 import secrets
 import time
+from collections import deque
 from contextlib import contextmanager
 from dataclasses import asdict
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 import requests
-from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
 from mandate import service, store
-from mandate.payouts import PayoutError, get_payout_status
+from mandate.hosting import load_env_unless_public, public_mode
+from mandate.payouts import PayoutError, fake_payouts_enabled, get_payout_status
 from mandate.policy import PaymentRequest
 from mandate.seed import seed
 
-load_dotenv()
+load_env_unless_public()
 
 DB_PATH = store.DB_FILE
 STATIC_DIR = Path(__file__).parent / "static"
 
 app = FastAPI(title="Mandate dashboard")
+
+
+# ---- abuse guard, only on a public server: limit POST requests per visitor per minute ----------
+# A simple in-memory counter. It is a guard for a demo, not real security: a visitor who sends a
+# fake X-Forwarded-For header can get around it.
+
+POSTS_PER_MINUTE = 30
+_recent_posts: dict[str, deque] = {}
+
+
+def client_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for", "")  # a proxy such as Render's puts the visitor here
+    return forwarded.split(",")[0].strip() or (request.client.host if request.client else "unknown")
+
+
+@app.middleware("http")
+async def limit_posts(request: Request, call_next):
+    if request.method == "POST" and public_mode():
+        ip, now = client_ip(request), time.monotonic()
+        recent = _recent_posts.setdefault(ip, deque())
+        while recent and now - recent[0] > 60:
+            recent.popleft()
+        if len(recent) >= POSTS_PER_MINUTE:
+            return JSONResponse(
+                {"detail": f"Too many requests. This demo allows {POSTS_PER_MINUTE} actions per minute "
+                           "per visitor. Please wait a minute and try again."},
+                status_code=429, headers={"Retry-After": "60"})
+        recent.append(now)
+        if len(_recent_posts) > 5000:  # keep the memory use bounded
+            for key in [k for k, q in _recent_posts.items() if not q or now - q[-1] > 60]:
+                del _recent_posts[key]
+    return await call_next(request)
 
 
 @contextmanager
@@ -88,6 +122,7 @@ def get_mandate():
             "per_payment_cap": str(m.per_payment_cap),
             "approval_threshold": str(m.approval_threshold),
             "expires_at": m.expires_at.isoformat(),
+            "fake_payouts": fake_payouts_enabled(),  # True in offline demo mode (the page shows a banner)
         }
 
 

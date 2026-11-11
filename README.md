@@ -5,7 +5,7 @@ Mandate is a policy gateway that sits between an AI agent and PayPal, so an agen
 - **Demo video (under 3 minutes):** [add the YouTube link here before submitting]
 - **Source code:** https://github.com/ToniGift/Mandate
 - **License:** [MIT](LICENSE)
-- **Live demo:** not hosted. The dashboard has no login, so it is meant to run on your own PC. The [Quick start](#quick-start-windows-powershell) takes about five minutes with free PayPal sandbox accounts.
+- **Live demo (offline demo mode):** [add the Render URL here once it is deployed]. See [Hosted demo](#hosted-demo). The real PayPal sandbox run is the default mode and is what the video shows. To run it yourself, the [Quick start](#quick-start-windows-powershell) takes about five minutes with free PayPal sandbox accounts.
 
 Built for the PayPal AI Hackathon. Everything runs on the PayPal sandbox, so no real money is sent.
 
@@ -31,7 +31,7 @@ Built for the PayPal AI Hackathon. Everything runs on the PayPal sandbox, so no 
 - An **AI agent** that reads invoices and asks Mandate to pay them.
 - A **human dashboard** with an approval queue, a payments list, an audit trail, a simulated attacks panel, a "Try your own request" form and a reset button.
 - An **attack test script** that runs 11 attacks and prints PASS or FAIL for each.
-- **111 automated tests**.
+- **163 automated tests**.
 
 ## How Mandate meets the technology requirement
 
@@ -98,7 +98,41 @@ NEBIUS_BASE_URL=https://api.tokenfactory.nebius.com/v1/
 
 The PayPal values are needed for everything that makes payments. The Nebius values are only needed for the AI agent (scripts/run_agent.py). The dashboard, the simulated attacks and the attack script run without an AI key.
 
-`.env.example` also lists three optional settings, commented out, with their defaults: `MANDATE_PORT` (gateway, 8000), `MANDATE_GATEWAY_URL` (where the agent finds the gateway) and `DASHBOARD_PORT` (8001).
+`.env.example` also lists optional settings, commented out, with their defaults: `MANDATE_PORT` (gateway, 8000), `MANDATE_GATEWAY_URL` (where the agent finds the gateway), `DASHBOARD_PORT` (8001), `DASHBOARD_HOST` (127.0.0.1, for hosting) and `MANDATE_FAKE_PAYOUTS` (offline demo mode, off by default, see the next section).
+
+## Try it with no keys at all
+
+**Real mode, with the PayPal sandbox, is the default, and it is what the demo video shows.** If you have no PayPal sandbox account yet and just want to look around, use **offline demo mode**.
+
+It simulates only the payout: the batch id starts with `FAKE-` and the status is `SUCCESS`. Everything else is the real code: the eight rules, the budget, the approval queue, the audit trail and the simulated attacks. No PayPal values, no AI key and no `.env` file are needed.
+
+```powershell
+$env:MANDATE_FAKE_PAYOUTS = "1"
+python scripts/run_dashboard.py
+```
+
+Open http://127.0.0.1:8001 and follow the same [dashboard click path](#dashboard-click-path). An amber banner at the top reads "Offline demo: payouts are simulated, PayPal is not contacted." The banner is shown whenever this mode is on. In this mode nothing is sent to PayPal, so nothing appears in any PayPal account.
+
+- Without `PAYPAL_PERSONAL_EMAIL`, the demo suppliers use a made-up address (`demo-owner@example.test`).
+- The AI agent still needs its Nebius key. To run it offline too, set `MANDATE_FAKE_PAYOUTS=1` and `PAYPAL_PERSONAL_EMAIL=demo-owner@example.test` in the terminals that run the gateway and the agent.
+- To go back to real mode, run `Remove-Item Env:MANDATE_FAKE_PAYOUTS`, restart the dashboard, and press **Reset demo data**. Payments made offline stay in `mandate.db` until you reset.
+- You can also put `MANDATE_FAKE_PAYOUTS=1` in `.env` instead of setting it in the terminal.
+
+## Hosted demo
+
+**URL:** [add the Render URL here once it is deployed]
+
+The hosted demo is the dashboard running on a free [Render](https://render.com) web service, set up by `render.yaml`. Real mode, with the PayPal sandbox, is the default and is what the demo video shows. The hosted copy is different:
+
+- It runs in **offline demo mode**: payouts are simulated, and an amber banner on the page says so.
+- **No keys are on the server.** There are no PayPal or Nebius values, and the app does not read a `.env` file there.
+- The free tier can take **about a minute to wake up** the first time you open it.
+- **Data resets when it sleeps or restarts.** The server starts with a fresh demo mandate (budget 1000, expiring 30 days from the start), because its database file is lost on restart.
+- It has no login, so everyone who has the link shares the same demo data, and anyone can press Approve, Reject or Reset demo data. To keep it from being abused, it allows 30 actions (POST requests) per visitor per minute and answers with a clear message after that.
+
+Safety rules in the code (`mandate/hosting.py`, `scripts/run_dashboard.py`): a dashboard host other than `127.0.0.1` or `localhost` is treated as a public server. It refuses to start unless `MANDATE_FAKE_PAYOUTS=1`, it never reads `.env`, and it removes every `PAYPAL_` and `NEBIUS_` setting from its environment, so a public server cannot send real payouts.
+
+Settings for hosting: `DASHBOARD_HOST` (default `127.0.0.1`; `render.yaml` sets `0.0.0.0`) and the port, taken from `DASHBOARD_PORT`, then `PORT` (Render sets it), then 8001.
 
 ## Try it
 
@@ -163,7 +197,7 @@ To check that your Nebius key and model can make tool calls before running the a
 python -m pytest -q
 ```
 
-The test suite has 111 tests. They use a fake PayPal and need no network or `.env`.
+The test suite has 163 tests. They use a fake PayPal and need no network or `.env`.
 
 ```powershell
 python scripts/run_attacks.py
@@ -200,7 +234,7 @@ If several checks fire, the worst outcome wins: BLOCK beats HOLD, and HOLD beats
 
 ## How Mandate maps to the judging criteria
 
-- **Technological implementation:** real PayPal Payouts calls (`mandate/payouts.py`), an MCP gateway (`mandate/gateway.py`), an agent that uses tool calling (`mandate/agent.py`), 111 tests, and an 11-attack script (`scripts/run_attacks.py`).
+- **Technological implementation:** real PayPal Payouts calls (`mandate/payouts.py`), an MCP gateway (`mandate/gateway.py`), an agent that uses tool calling (`mandate/agent.py`), 163 tests, and an 11-attack script (`scripts/run_attacks.py`).
 - **Design:** the dashboard (`mandate/static/index.html`) with an approval queue, an audit trail, rubber-stamp decisions, and the mandate shown as a slip with a budget bar.
 - **Potential impact:** it addresses invoice fraud against AI agents that pay. It is for finance teams that give an agent access to payments and want fixed limits and a human sign-off on anything unusual.
 - **Innovation:** the rules are code that the agent cannot override, and the approval path (the dashboard) cannot be reached by the agent or through the gateway.
@@ -225,7 +259,7 @@ These are used within their terms.
 
 - In our tests the model resisted every injection sample. So the model did not prove the rules work. The **attack script and the simulated attacks** prove them, because they send the bad requests directly.
 - There is no rule yet for an amount that is unusual for a particular supplier. Only the cap, the threshold and the budget apply.
-- The dashboard has **no login**, and neither does the gateway. Run them only on your own PC, never on a public server.
+- The dashboard has **no login**, and neither does the gateway. Run them only on your own PC. The one exception is the hosted demo, which is safe to expose only because it runs in offline demo mode with no keys on the server. Anyone with its link can approve, reject or reset its shared demo data.
 - If a person approves a changed-payee payment, the money goes to the **new** address. In the sandbox it shows as Unclaimed.
 
 ## Reset
@@ -246,16 +280,20 @@ mandate/
   paypal_client.py   PayPal OAuth token
   store.py           SQLite: mandate, suppliers, payments, audit log
   seed.py            the demo mandate and suppliers
+  hosting.py         settings and safety rules for a public (hosted) dashboard
   gateway.py         MCP server with request_payment and get_mandate
   agent.py           the AI agent (Nebius, OpenAI-compatible API)
   dashboard.py       web app for humans: approve, reject, audit
   static/index.html  the dashboard page (AG Grid)
 scripts/             run_dashboard, run_gateway, run_agent, run_attacks, run_flow,
                      demo_policy, probe_paypal, check_nebius, mcp_smoke_test
+render.yaml          Render blueprint for the hosted demo (offline demo mode)
 samples/invoices/    eight sample invoices, four with hidden malicious text
-tests/               111 tests
+tests/               163 tests
 ```
 
 ## License
 
 [MIT License](LICENSE). Free to test and evaluate, with no restrictions, under the MIT license.
+
+Mandate is an independent hackathon project and is not affiliated with any other product of the same name.

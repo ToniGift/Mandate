@@ -121,3 +121,53 @@ def test_held_and_blocked_payments_do_not_count_as_spent(conn, payout):
     service.handle_payment_request(conn, req(invoice_id="INV-H", amount="150.00"))
     service.handle_payment_request(conn, req(invoice_id="INV-B", amount="250.00"))
     assert store.spent_so_far(conn) == 0
+
+
+# ---- offline demo mode (MANDATE_FAKE_PAYOUTS=1): the real send_payout runs, but it is simulated ----
+
+@pytest.fixture
+def offline(monkeypatch):
+    monkeypatch.setenv("MANDATE_FAKE_PAYOUTS", "1")
+    for name in ("PAYPAL_PERSONAL_EMAIL", "PAYPAL_CLIENT_ID", "PAYPAL_CLIENT_SECRET"):
+        monkeypatch.delenv(name, raising=False)  # no PayPal values of any kind
+
+    def no_network(*args, **kwargs):
+        raise AssertionError("offline mode must not contact PayPal")
+
+    with patch("mandate.hosting.load_dotenv"), patch("mandate.payouts.PayPalClient", no_network), \
+            patch("requests.post", no_network), patch("requests.request", no_network):  # load_dotenv: ignore a real .env
+        yield
+
+
+def test_offline_mode_seed_needs_no_paypal_email(offline):
+    c = store.connect(":memory:")
+    m = seed(c)
+    assert {s.payee_email for s in m.suppliers.values()} == {"demo-owner@example.test"}
+
+
+def test_real_mode_seed_still_requires_the_email(monkeypatch):
+    monkeypatch.setenv("MANDATE_FAKE_PAYOUTS", "0")
+    monkeypatch.delenv("PAYPAL_PERSONAL_EMAIL", raising=False)
+    with patch("mandate.hosting.load_dotenv"):  # do not read a real .env
+        with pytest.raises(RuntimeError, match="PAYPAL_PERSONAL_EMAIL"):
+            seed(store.connect(":memory:"))
+
+
+def test_offline_mode_full_flow_with_the_real_payout_function(offline):
+    c = store.connect(":memory:")
+    seed(c)
+    paid = service.handle_payment_request(c, req(email="demo-owner@example.test"))
+    assert (paid.decision, paid.status) == ("ALLOW", "PAID")
+    p = store.get_payment(c, paid.payment_id)
+    assert p["paypal_batch_id"] == "FAKE-INV-1" and p["paypal_status"] == "SUCCESS"
+    assert "FAKE-INV-1" in store.list_audit_log(c)[0]["outcome"]
+
+    held = service.handle_payment_request(c, req("INV-2", amount="150.00", email="demo-owner@example.test"))
+    assert held.status == "HELD"
+    approved = service.approve_payment(c, held.payment_id)
+    assert approved.status == "PAID"
+    assert store.get_payment(c, held.payment_id)["paypal_batch_id"] == "FAKE-INV-2"
+    assert store.spent_so_far(c) == D("175.00")
+
+    blocked = service.handle_payment_request(c, req("INV-3", amount="250.00", email="demo-owner@example.test"))
+    assert blocked.status == "BLOCKED"  # the rules are the same in offline mode

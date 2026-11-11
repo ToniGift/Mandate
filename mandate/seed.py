@@ -6,9 +6,9 @@ import sqlite3
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
-from dotenv import load_dotenv
-
 from mandate import store
+from mandate.hosting import load_env_unless_public
+from mandate.payouts import fake_payouts_enabled
 from mandate.policy import MandateConfig, Supplier
 
 
@@ -17,9 +17,12 @@ def seed(conn: sqlite3.Connection) -> MandateConfig:
 
     Every supplier is paid at PAYPAL_PERSONAL_EMAIL, so all demo payments land in
     the developer's own sandbox personal account.
+    In offline demo mode (MANDATE_FAKE_PAYOUTS=1) no real address is needed: a made-up one is used.
     """
-    load_dotenv()
+    load_env_unless_public()
     email = os.environ.get("PAYPAL_PERSONAL_EMAIL", "")
+    if not email and fake_payouts_enabled():
+        email = "demo-owner@example.test"
     if not email:
         raise RuntimeError("PAYPAL_PERSONAL_EMAIL must be set in .env")
 
