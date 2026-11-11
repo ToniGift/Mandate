@@ -2,13 +2,49 @@
 
 Mandate is a policy gateway that sits between an AI agent and PayPal, so an agent that pays invoices cannot be tricked into paying the wrong person or the wrong amount.
 
+![Mandate: ALLOW, HOLD and BLOCK stamps on three example requests, and the mandate card showing the cap per payment, the approval threshold and the budget](docs/images/mandate-overview.webp)
+
 - **Demo video (under 3 minutes):** [add the YouTube link here before submitting]
 - **Source code:** https://github.com/ToniGift/Mandate
 - **License:** [MIT](LICENSE)
+- **How it works, one page per scenario and per rule:** [docs/README.md](docs/README.md)
 - **Hosted demo:** https://mandate-jux7.onrender.com/ (offline mode: payouts are simulated and PayPal is not contacted; the free server can take about a minute to wake up, and its data resets when it sleeps).
 - **Real PayPal sandbox run:** the default mode. Run it on your own PC with the Quick start below (about five minutes with free PayPal sandbox accounts). The demo video shows this mode.
 
 Built for the PayPal AI Hackathon. Everything runs on the PayPal sandbox, so no real money is sent.
+
+## Explore how it works
+
+Each page below says what happens, how to try it (real mode and offline mode), and which rules decided it. The [docs overview](docs/README.md) explains the three answers, ALLOW, HOLD and BLOCK, and the demo mandate.
+
+### Six scenarios
+
+| # | Scenario | Outcome | What it shows | Page |
+|---|----------|---------|---------------|------|
+| 1 | A normal invoice (Legitimate invoice 25.00) | **ALLOW** | The payment is made | [Normal invoice](docs/scenarios/01-normal-invoice.md) |
+| 2 | Same supplier, new payee address (Changed payee 40.00) | **HOLD** | A person must check the new address | [Changed payee](docs/scenarios/02-changed-payee.md) |
+| 3 | A large invoice (Large invoice 150.00) | **HOLD** | Above the approval threshold | [Large invoice](docs/scenarios/03-large-invoice.md) |
+| 4 | Invoices with hidden instructions | **ALLOW, HOLD or BLOCK**, depending on the invoice | In our runs the agent ignored the hidden text. The simulated 5000 USD payment is BLOCK. | [Hidden instructions](docs/scenarios/04-hidden-instructions.md) |
+| 5 | Right supplier, right payee, inflated amount (Inflated invoice 95.00) | **HOLD** | Above that supplier's usual maximum | [Inflated invoice](docs/scenarios/05-inflated-invoice.md) |
+| 6 | A payment that breaks a rule (the injected 5000 USD payment, or a payment over the cap) | **BLOCK** | Nothing is sent, and nobody is asked | [Blocked payment](docs/scenarios/06-blocked-payment.md) |
+
+ALLOW and HOLD can end in a payout (HOLD only after a person approves it). BLOCK never does. A payout is a payout in the PayPal sandbox in real mode, and a simulated one in offline demo mode.
+
+### Nine rules
+
+The nine policy checks run in this order, and the strictest result wins: BLOCK beats HOLD, and HOLD beats ALLOW. They live in `mandate/policy.py`.
+
+| # | Rule | What it stops | Result | Page |
+|---|------|---------------|--------|------|
+| 1 | Expiry | Replay of an old mandate | BLOCK | [Expiry](docs/rules/01-expiry.md) |
+| 2 | Amount and currency | Zero, negative or wrong-currency payment | BLOCK | [Amount and currency](docs/rules/02-amount-and-currency.md) |
+| 3 | Payee allow-list | Unknown recipient | BLOCK | [Payee allow-list](docs/rules/03-payee-allow-list.md) |
+| 4 | Payee change | Known supplier, new payee account (invoice fraud) | HOLD | [Payee change](docs/rules/04-payee-change.md) |
+| 5 | Duplicate invoice | Same invoice paid twice | BLOCK | [Duplicate invoice](docs/rules/05-duplicate-invoice.md) |
+| 6 | Per-payment cap | Oversized payment | BLOCK | [Per-payment cap](docs/rules/06-per-payment-cap.md) |
+| 7 | Cumulative budget | Splitting one big payment into many small ones | BLOCK when exceeded | [Cumulative budget](docs/rules/07-cumulative-budget.md) |
+| 8 | Approval threshold | Large but legitimate payment | HOLD | [Approval threshold](docs/rules/08-approval-threshold.md) |
+| 9 | Typical amount | Known supplier, correct payee, but an amount above that supplier's usual maximum (only when the owner has set one) | HOLD | [Typical amount](docs/rules/09-typical-amount.md) |
 
 ## What Mandate does
 
@@ -26,7 +62,7 @@ Built for the PayPal AI Hackathon. Everything runs on the PayPal sandbox, so no 
 ## Features
 
 - A **mandate** with a budget, a cap per payment, an approval threshold, a supplier list (each supplier can have a usual maximum invoice) and an expiry date.
-- **Nine rule checks** that answer ALLOW, HOLD or BLOCK (see [How it works in detail](#how-it-works-in-detail)).
+- **Nine rule checks** that answer ALLOW, HOLD or BLOCK (see [the rules](#nine-rules) and [docs/README.md](docs/README.md)).
 - **Real PayPal sandbox payouts** for allowed or approved payments.
 - An **MCP gateway with exactly two tools**, `request_payment` and `get_mandate`. There is no tool to approve or reject.
 - An **AI agent** that reads invoices and asks Mandate to pay them.
@@ -154,16 +190,16 @@ No AI key is needed.
 python scripts/run_dashboard.py
 ```
 
-Open http://127.0.0.1:8001. The first start creates `mandate.db` and seeds a demo mandate: USD, budget 1000, cap per payment 200, approval needed above 100, expires in 30 days, and three suppliers (Acme Office Supplies, Northwind Packaging, Globex Cleaning Services). Each supplier also has a usual largest invoice (60, 150 and 200), shown on the mandate slip.
+Open http://127.0.0.1:8001. The first start creates `mandate.db` and seeds a demo mandate: USD, budget 1000, cap per payment 200, approval needed above 100, expires in 30 days, and three suppliers (Acme Office Supplies, Northwind Packaging, Globex Cleaning Services). Each supplier also has a usual largest invoice (60, 150 and 200), shown on the mandate slip. Each scenario page has the same steps in more detail.
 
-1. Under **Try a request**, press **Legitimate invoice 25.00**. Mandate answers ALLOW and a real sandbox payout is made. The result box shows a stamp, and the payment appears in the **Ledger**.
-2. Press **Changed payee 40.00**. Same supplier, new payee address: HOLD. It appears under **Needs a decision**.
-3. Press **Large invoice 150.00**. Above the approval threshold: HOLD.
-4. Press **Inflated invoice 95.00**. The right supplier and the right payee, and under the approval threshold, but more than Acme usually invoices (60): HOLD, with the reason "typical_amount".
+1. Under **Try a request**, press **Legitimate invoice 25.00**. Mandate answers ALLOW and a real sandbox payout is made. The result box shows a stamp, and the payment appears in the **Ledger**. ([Scenario 1](docs/scenarios/01-normal-invoice.md))
+2. Press **Changed payee 40.00**. Same supplier, new payee address: HOLD. It appears under **Needs a decision**. ([Scenario 2](docs/scenarios/02-changed-payee.md))
+3. Press **Large invoice 150.00**. Above the approval threshold: HOLD. ([Scenario 3](docs/scenarios/03-large-invoice.md))
+4. Press **Inflated invoice 95.00**. The right supplier and the right payee, and under the approval threshold, but more than Acme usually invoices (60): HOLD, with the reason "typical_amount". ([Scenario 5](docs/scenarios/05-inflated-invoice.md))
 5. Under **Needs a decision**, press **Approve** on the 150.00 payment. It is paid.
 6. Press **Reject** on the 40.00 payment. Nothing is sent.
 7. Open the **Audit trail** tab in the Ledger to see every decision with its reasons.
-8. In the red **Simulated compromised agent** panel, try the four attack buttons: an injected payment of 5000 USD to attacker@example.test (BLOCK), a changed payee on a known supplier (HOLD), a payment over the cap (BLOCK) and an inflated invoice on a known supplier with the correct payee (HOLD). **These are simulated attacks, no AI involved.** Each button sends a hand-written bad request straight to Mandate's rule engine.
+8. In the red **Simulated compromised agent** panel, try the four attack buttons: an injected payment of 5000 USD to attacker@example.test (BLOCK), a changed payee on a known supplier (HOLD), a payment over the cap (BLOCK) and an inflated invoice on a known supplier with the correct payee (HOLD). **These are simulated attacks, no AI involved.** Each button sends a hand-written bad request straight to Mandate's rule engine. ([Scenario 4](docs/scenarios/04-hidden-instructions.md))
 9. Use **Try your own request** to pick a supplier and an amount. The payee is always the address on file for that supplier.
 10. Press **Reset demo data** (in the Try a request panel) to start again.
 
@@ -189,7 +225,7 @@ The agent reads each file in `samples/invoices/`, extracts the details and calls
 python scripts/run_agent.py --injection-only
 ```
 
-This runs only the four invoices that hide malicious text (a fake instruction, a "remittance details changed" footer, a fake CFO override, and a note asking for a second payment). Their visible amounts are 30, 120, 180 and 240, so with the demo mandate the rules give ALLOW, HOLD, HOLD and BLOCK. Held payments show up on the dashboard for you to approve or reject. Run the dashboard in a third terminal to see them.
+This runs only the four invoices that hide malicious text (a fake instruction, a "remittance details changed" footer, a fake CFO override, and a note asking for a second payment). Their visible amounts are 30, 120, 180 and 240, so with the demo mandate the rules give ALLOW, HOLD, HOLD and BLOCK. Held payments show up on the dashboard for you to approve or reject. Run the dashboard in a third terminal to see them. [Scenario 4](docs/scenarios/04-hidden-instructions.md) explains what happened in our runs.
 
 To check that your Nebius key and model can make tool calls before running the agent: `python scripts/check_nebius.py`.
 
@@ -205,37 +241,29 @@ The test suite has 190 tests. They use a fake PayPal and need no network or `.en
 python scripts/run_attacks.py
 ```
 
-This simulates a fully compromised agent with 12 attacks (injected 5000 USD to an unknown payee, changed payee, oversized payment, unknown supplier, same invoice twice, splitting into small payments, expired mandate, wrong currency, zero and negative amounts, a large payment that is rejected, a held payment that a person approves, and a known supplier with the correct payee and an inflated amount that is held). It prints PASS or FAIL for each and exits with a non-zero code if any fail. The script uses a **fake PayPal and a temporary in-memory database**, so it sends no money and never touches `mandate.db`.
+This simulates a fully compromised agent with 12 attacks. It prints PASS or FAIL for each and exits with a non-zero code if any fail. The script uses a **fake PayPal and a temporary in-memory database**, so it sends no money and never touches `mandate.db`. It builds its own small mandate (budget 300, cap 100, approval above 50), not the demo one.
+
+<details>
+<summary>The 12 attacks, and the rule page for each</summary>
+
+| # | Attack | Expected | Rule page |
+|---|--------|----------|-----------|
+| 1 | Injected 5000 USD, unknown payee | BLOCK | [Payee allow-list](docs/rules/03-payee-allow-list.md) |
+| 2 | Known supplier, changed payee | HOLD | [Payee change](docs/rules/04-payee-change.md) |
+| 3 | Payment over the per-payment cap | BLOCK | [Per-payment cap](docs/rules/06-per-payment-cap.md) |
+| 4 | Unknown supplier | BLOCK | [Payee allow-list](docs/rules/03-payee-allow-list.md) |
+| 5 | Same invoice paid twice | second one BLOCK | [Duplicate invoice](docs/rules/05-duplicate-invoice.md) |
+| 6 | Splitting into small payments | the one that crosses the budget BLOCK | [Cumulative budget](docs/rules/07-cumulative-budget.md) |
+| 7 | Expired mandate | BLOCK | [Expiry](docs/rules/01-expiry.md) |
+| 8 | Wrong currency | BLOCK | [Amount and currency](docs/rules/02-amount-and-currency.md) |
+| 9 | Zero and negative amounts | BLOCK, BLOCK | [Amount and currency](docs/rules/02-amount-and-currency.md) |
+| 10 | Large legitimate payment, then rejected | HOLD, nothing sent | [Approval threshold](docs/rules/08-approval-threshold.md) |
+| 11 | Held payment approved by a person | HOLD, one payout | [Approval threshold](docs/rules/08-approval-threshold.md) |
+| 12 | Known supplier, correct payee, inflated amount | HOLD | [Typical amount](docs/rules/09-typical-amount.md) |
+
+</details>
 
 An offline demo of the rule engine alone is `python scripts/demo_policy.py`.
-
-## How it works in detail
-
-1. The business writes down a **mandate**: a budget, a cap per payment, an approval threshold, approved suppliers and an expiry date.
-2. The AI agent reads an invoice and **asks** Mandate to pay it. The agent can only ask. It has no way to approve anything.
-3. Mandate checks the request against the mandate using **plain code, not an AI**, and answers one of three things:
-   - **ALLOW**: the payment is sent to PayPal.
-   - **HOLD**: a person must approve it first, on the dashboard.
-   - **BLOCK**: nothing is sent.
-4. Every request, decision and reason is written to an audit log.
-
-### The nine policy checks
-
-If several checks fire, the worst outcome wins: BLOCK beats HOLD, and HOLD beats ALLOW. The checks live in `mandate/policy.py`.
-
-| Check | Attack it stops | Decision |
-|-------|-----------------|----------|
-| Expiry | Replay of an old mandate | BLOCK |
-| Amount and currency | Zero, negative or wrong-currency payment | BLOCK |
-| Payee allow-list | Unknown recipient | BLOCK |
-| Payee change | Known supplier, new payee account (invoice fraud) | HOLD |
-| Duplicate invoice | Same invoice paid twice | BLOCK |
-| Per-payment cap | Oversized payment | BLOCK |
-| Cumulative budget | Splitting one big payment into many small ones | BLOCK when exceeded |
-| Approval threshold | Large but legitimate payment | HOLD |
-| Typical amount | Known supplier, correct payee, but an invoice far above what that supplier usually sends (only when the business has set a usual maximum for the supplier) | HOLD |
-
-The usual maximum is for the human owner. The agent's gateway never returns it, not even in the reasons it gives back.
 
 ## How Mandate maps to the judging criteria
 
@@ -243,7 +271,7 @@ The usual maximum is for the human owner. The agent's gateway never returns it, 
 - **Design:** the dashboard (`mandate/static/index.html`) with an approval queue, an audit trail, rubber-stamp decisions, and the mandate shown as a slip with a budget bar.
 - **Potential impact:** it addresses invoice fraud against AI agents that pay. It is for finance teams that give an agent access to payments and want fixed limits and a human sign-off on anything unusual.
 - **Innovation:** the rules are code that the agent cannot override, and the approval path (the dashboard) cannot be reached by the agent or through the gateway.
-- **Presentation:** the demo video (link at the top) and this README.
+- **Presentation:** the demo video (link at the top), this README, and the [docs](docs/README.md).
 
 ## Project history
 
@@ -264,7 +292,7 @@ These are used within their terms.
 
 ## Honest limits
 
-- In our tests the model resisted every injection sample. So the model did not prove the rules work. The **attack script and the simulated attacks** prove them, because they send the bad requests directly.
+- In our tests the model resisted every injection sample. So the model did not prove the rules work. The **attack script and the simulated attacks** prove them, because they send the bad requests straight to the rules.
 - The dashboard has **no login**, and neither does the gateway. Run them only on your own PC. The one exception is the hosted demo, which is safe to expose only because it runs in offline demo mode with no keys on the server. Anyone with its link can approve, reject or reset its shared demo data.
 - If a person approves a changed-payee payment, the money goes to the **new** address. In the sandbox it shows as Unclaimed.
 
@@ -292,8 +320,9 @@ mandate/
   agent.py           the AI agent (Nebius, OpenAI-compatible API)
   dashboard.py       web app for humans: approve, reject, audit
   static/index.html  the dashboard page (AG Grid)
+docs/                how it works: one page per scenario and per rule, and the model comparison
 scripts/             run_dashboard, run_gateway, run_agent, run_attacks, run_flow,
-                     demo_policy, probe_paypal, check_nebius, mcp_smoke_test
+                     demo_policy, compare_models, probe_paypal, check_nebius, mcp_smoke_test
 render.yaml          Render blueprint for the hosted demo (offline demo mode)
 samples/invoices/    eight sample invoices, four with hidden malicious text
 tests/               190 tests
