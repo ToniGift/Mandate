@@ -41,7 +41,11 @@ def main() -> int:
         mark_public()
         scrub_credentials()  # a public server never holds PayPal or Nebius settings
 
-    conn = store.connect()
+    try:
+        conn = store.connect()
+    except store.SchemaMismatch as err:  # an old mandate.db: say what to do, not a traceback
+        print(err, file=sys.stderr)
+        return 1
     if conn.execute("SELECT COUNT(*) FROM mandate").fetchone()[0] == 0:
         seed(conn)  # a fresh demo mandate, expiring 30 days from now
         print("Database was empty: seeded the demo mandate.")

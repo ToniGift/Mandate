@@ -21,15 +21,17 @@ def attacks():
 
 def test_every_attack_is_stopped_or_held(attacks):
     rows, bench = attacks.run_attacks()
-    assert len(rows) == 11
-    assert [r["number"] for r in rows] == list(range(1, 12))
+    assert len(rows) == 12
+    assert [r["number"] for r in rows] == list(range(1, 13))
+    assert rows[11]["name"] == "Known supplier, correct payee, inflated amount" and rows[11]["actual"] == "HOLD"
     assert all(r["passed"] for r in rows), [r for r in rows if not r["passed"]]
     assert bench.bad_payouts == 0
 
 
 def test_only_allowed_or_approved_requests_reach_the_fake_paypal(attacks):
     rows, bench = attacks.run_attacks()
-    # attack 5: one payout, attack 6: seven payouts (300 // 40), attack 11: one approved payout
+    # attack 5: one payout, attack 6: seven payouts (300 // 40), attack 11: one approved payout.
+    # Attack 12 (inflated amount) is held, so it adds none.
     assert len(bench.payouts) == 1 + 7 + 1
     assert all(p["payee_email"].endswith(".example.test") for p in bench.payouts)
     assert {p["invoice_id"] for p in bench.payouts if p["invoice_id"].startswith("ATK1-")} == set()
@@ -38,7 +40,7 @@ def test_only_allowed_or_approved_requests_reach_the_fake_paypal(attacks):
 def test_main_prints_the_table_and_the_two_summary_lines(attacks, capsys):
     assert attacks.main() == 0
     out = capsys.readouterr().out
-    assert "11 of 11 attacks stopped or held as expected" in out
+    assert "12 of 12 attacks stopped or held as expected" in out
     assert "payouts sent for blocked or held requests: 0" in out
     assert "PASS  no payout was made for any BLOCK or HOLD case" in out
     for column in ("Attack", "Expected", "Actual", "Result", "First reason"):

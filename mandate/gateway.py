@@ -86,10 +86,13 @@ def request_payment(invoice_id: str, supplier_id: str, payee_email: str,
     conn = _get_conn()
     result = handle_payment_request(conn, req)
 
-    # Do not tell the agent which email is on file (a fooled agent could repeat it).
-    # The full reason stays in the audit log.
-    reasons = ["payee_change: payee email does not match the one on file for this supplier"
-               if r.startswith("payee_change:") else r for r in result.reasons]
+    # Do not tell the agent which email is on file, or a supplier's usual maximum amount (a fooled agent
+    # could repeat the email, or stay just under the limit). The full reasons stay in the audit log.
+    generic = {
+        "payee_change:": "payee_change: payee email does not match the one on file for this supplier",
+        "typical_amount:": "typical_amount: amount is above the usual maximum for this supplier",
+    }
+    reasons = [next((text for prefix, text in generic.items() if r.startswith(prefix)), r) for r in result.reasons]
     return {
         "decision": result.decision,
         "status": result.status,

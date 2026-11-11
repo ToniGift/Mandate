@@ -24,6 +24,7 @@ class Supplier:
     supplier_id: str
     name: str
     payee_email: str  # the PayPal account this supplier is known to be paid at
+    typical_max: Decimal | None = None  # the usual largest invoice from this supplier (None = no limit set)
 
 
 @dataclass(frozen=True)
@@ -135,6 +136,13 @@ def evaluate(
                f"{req.amount} is above approval threshold {mandate.approval_threshold}")
     else:
         record("approval_threshold", None)
+
+    # 9. typical amount for this supplier (only when the business has set a usual maximum)
+    if supplier is not None and supplier.typical_max is not None and req.amount > supplier.typical_max:
+        record("typical_amount", Decision.HOLD,
+               f"amount {req.amount} is above the usual maximum {supplier.typical_max} for {supplier.name}")
+    else:
+        record("typical_amount", None)
 
     if worst is Decision.ALLOW:
         reasons.append("all checks passed")

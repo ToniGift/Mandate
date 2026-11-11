@@ -108,13 +108,13 @@ def test_cannot_approve_twice_or_approve_non_held(conn, payout):
 
 
 def test_budget_tracking_blocks_when_exceeded(conn, payout):
-    # budget is 1000 and cap 200: pay 90 eleven times (990), then 90 more must be blocked
-    for i in range(11):
-        assert service.handle_payment_request(conn, req(invoice_id=f"INV-{i}", amount="90")).status == "PAID"
-    assert store.spent_so_far(conn) == D("990")
-    r = service.handle_payment_request(conn, req(invoice_id="INV-X", amount="90"))
+    # budget is 1000, cap 200, and Acme's usual maximum is 60: pay 60 sixteen times (960), then 60 more is blocked
+    for i in range(16):
+        assert service.handle_payment_request(conn, req(invoice_id=f"INV-{i}", amount="60")).status == "PAID"
+    assert store.spent_so_far(conn) == D("960")
+    r = service.handle_payment_request(conn, req(invoice_id="INV-X", amount="60"))
     assert r.status == "BLOCKED" and any("budget" in x for x in r.reasons)
-    assert store.paid_invoice_ids(conn) == {f"INV-{i}" for i in range(11)}
+    assert store.paid_invoice_ids(conn) == {f"INV-{i}" for i in range(16)}
 
 
 def test_held_and_blocked_payments_do_not_count_as_spent(conn, payout):

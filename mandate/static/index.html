@@ -109,6 +109,7 @@
   .terms { padding: 18px 24px 20px; }
   .terms .intro { margin: 4px 0 6px; }
   .lines { margin: 8px 0 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px; }
+  .slip-sub { font-size: 16px; margin: 18px 0 0; }
   .lines div { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--rule); }
   .lines dt { color: var(--ink-soft); }
   .lines dd { margin: 0; font-weight: 600; text-align: right; }
@@ -317,6 +318,8 @@
         <div><dt>Needs approval above</dt><dd id="m-threshold">-</dd></div>
         <div><dt>Expires</dt><dd id="m-expires">-</dd></div>
       </dl>
+      <h3 class="slip-sub">Usual largest invoice per supplier</h3>
+      <dl class="lines" id="m-suppliers"></dl>
     </div>
     <div class="stub">
       <div class="soft small">Budget left</div>
@@ -362,6 +365,7 @@
           <button class="btn solid" data-demo="legitimate">Legitimate invoice 25.00</button>
           <button class="btn solid" data-demo="changed_payee">Changed payee 40.00</button>
           <button class="btn solid" data-demo="large">Large invoice 150.00</button>
+          <button class="btn solid" data-demo="inflated">Inflated invoice 95.00</button>
           <button class="btn" id="refresh-btn">Refresh payout status</button>
         </div>
         <div class="reset-box">
@@ -394,6 +398,7 @@
           <button class="btn" data-attack="injected">Injected payment: 5000 USD to attacker@example.test</button>
           <button class="btn" data-attack="changed_payee">Changed payee on a known supplier</button>
           <button class="btn" data-attack="over_cap">Payment over the cap</button>
+          <button class="btn" data-attack="inflated">Inflated invoice on a known supplier, correct payee</button>
         </div>
         <div class="result" id="attack-result" aria-live="polite"></div>
       </details>
@@ -694,6 +699,16 @@ function renderMandate(m) {
   $("m-cap").textContent = money(m.per_payment_cap) + " " + m.currency;
   $("m-threshold").textContent = money(m.approval_threshold) + " " + m.currency;
   $("m-expires").textContent = new Date(m.expires_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  // each supplier's usual largest invoice (shown to the human owner only)
+  $("m-suppliers").replaceChildren(...(m.suppliers || []).map((s) => {
+    const row = document.createElement("div");
+    const name = document.createElement("dt");
+    name.textContent = s.name;
+    const limit = document.createElement("dd");
+    limit.textContent = s.typical_max ? money(s.typical_max) + " " + m.currency : "no limit set";
+    row.append(name, limit);
+    return row;
+  }));
   $("m-remaining").textContent = money(m.remaining_budget) + " " + m.currency;
   $("m-spent").textContent = "Spent " + money(m.spent);
   $("m-total").textContent = "of " + money(m.total_budget);

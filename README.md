@@ -25,14 +25,14 @@ Built for the PayPal AI Hackathon. Everything runs on the PayPal sandbox, so no 
 
 ## Features
 
-- A **mandate** with a budget, a cap per payment, an approval threshold, a supplier list and an expiry date.
-- **Eight rule checks** that answer ALLOW, HOLD or BLOCK (see [How it works in detail](#how-it-works-in-detail)).
+- A **mandate** with a budget, a cap per payment, an approval threshold, a supplier list (each supplier can have a usual maximum invoice) and an expiry date.
+- **Nine rule checks** that answer ALLOW, HOLD or BLOCK (see [How it works in detail](#how-it-works-in-detail)).
 - **Real PayPal sandbox payouts** for allowed or approved payments.
 - An **MCP gateway with exactly two tools**, `request_payment` and `get_mandate`. There is no tool to approve or reject.
 - An **AI agent** that reads invoices and asks Mandate to pay them.
 - A **human dashboard** with an approval queue, a payments list, an audit trail, a simulated attacks panel, a "Try your own request" form and a reset button.
-- An **attack test script** that runs 11 attacks and prints PASS or FAIL for each.
-- **163 automated tests**.
+- An **attack test script** that runs 12 attacks and prints PASS or FAIL for each.
+- **190 automated tests**.
 
 ## How Mandate meets the technology requirement
 
@@ -105,7 +105,7 @@ The PayPal values are needed for everything that makes payments. The Nebius valu
 
 **Real mode, with the PayPal sandbox, is the default, and it is what the demo video shows.** If you have no PayPal sandbox account yet and just want to look around, use **offline demo mode**.
 
-It simulates only the payout: the batch id starts with `FAKE-` and the status is `SUCCESS`. Everything else is the real code: the eight rules, the budget, the approval queue, the audit trail and the simulated attacks. No PayPal values, no AI key and no `.env` file are needed.
+It simulates only the payout: the batch id starts with `FAKE-` and the status is `SUCCESS`. Everything else is the real code: the nine rules, the budget, the approval queue, the audit trail and the simulated attacks. No PayPal values, no AI key and no `.env` file are needed.
 
 ```powershell
 $env:MANDATE_FAKE_PAYOUTS = "1"
@@ -143,7 +143,7 @@ Run every command from the repo root, with the virtual environment active.
 
 1. **Real PayPal use.** An allowed or approved payment makes a real sandbox payout through the PayPal Payouts API (`mandate/payouts.py`).
 2. **The AI part.** An AI agent (Nebius) reads invoices and asks Mandate to pay them through an MCP gateway (`mandate/agent.py`, `mandate/gateway.py`).
-3. **Rules in code, not AI.** Run `python scripts/run_attacks.py`. It needs no PayPal and no AI key, and it prints 11 attacks with PASS or FAIL.
+3. **Rules in code, not AI.** Run `python scripts/run_attacks.py`. It needs no PayPal and no AI key, and it prints 12 attacks with PASS or FAIL.
 4. **A person decides.** Run `python scripts/run_dashboard.py` and follow the [dashboard click path](#dashboard-click-path). Only the dashboard can approve a held payment, and the agent cannot reach it.
 
 ### Dashboard click path
@@ -154,17 +154,18 @@ No AI key is needed.
 python scripts/run_dashboard.py
 ```
 
-Open http://127.0.0.1:8001. The first start creates `mandate.db` and seeds a demo mandate: USD, budget 1000, cap per payment 200, approval needed above 100, expires in 30 days, and three suppliers (Acme Office Supplies, Northwind Packaging, Globex Cleaning Services).
+Open http://127.0.0.1:8001. The first start creates `mandate.db` and seeds a demo mandate: USD, budget 1000, cap per payment 200, approval needed above 100, expires in 30 days, and three suppliers (Acme Office Supplies, Northwind Packaging, Globex Cleaning Services). Each supplier also has a usual largest invoice (60, 150 and 200), shown on the mandate slip.
 
 1. Under **Try a request**, press **Legitimate invoice 25.00**. Mandate answers ALLOW and a real sandbox payout is made. The result box shows a stamp, and the payment appears in the **Ledger**.
 2. Press **Changed payee 40.00**. Same supplier, new payee address: HOLD. It appears under **Needs a decision**.
 3. Press **Large invoice 150.00**. Above the approval threshold: HOLD.
-4. Under **Needs a decision**, press **Approve** on the 150.00 payment. It is paid.
-5. Press **Reject** on the 40.00 payment. Nothing is sent.
-6. Open the **Audit trail** tab in the Ledger to see every decision with its reasons.
-7. In the red **Simulated compromised agent** panel, try the three attack buttons: an injected payment of 5000 USD to attacker@example.test (BLOCK), a changed payee on a known supplier (HOLD) and a payment over the cap (BLOCK). **These are simulated attacks, no AI involved.** Each button sends a hand-written bad request straight to Mandate's rule engine.
-8. Use **Try your own request** to pick a supplier and an amount. The payee is always the address on file for that supplier.
-9. Press **Reset demo data** (in the Try a request panel) to start again.
+4. Press **Inflated invoice 95.00**. The right supplier and the right payee, and under the approval threshold, but more than Acme usually invoices (60): HOLD, with the reason "typical_amount".
+5. Under **Needs a decision**, press **Approve** on the 150.00 payment. It is paid.
+6. Press **Reject** on the 40.00 payment. Nothing is sent.
+7. Open the **Audit trail** tab in the Ledger to see every decision with its reasons.
+8. In the red **Simulated compromised agent** panel, try the four attack buttons: an injected payment of 5000 USD to attacker@example.test (BLOCK), a changed payee on a known supplier (HOLD), a payment over the cap (BLOCK) and an inflated invoice on a known supplier with the correct payee (HOLD). **These are simulated attacks, no AI involved.** Each button sends a hand-written bad request straight to Mandate's rule engine.
+9. Use **Try your own request** to pick a supplier and an amount. The payee is always the address on file for that supplier.
+10. Press **Reset demo data** (in the Try a request panel) to start again.
 
 ### The AI agent
 
@@ -198,13 +199,13 @@ To check that your Nebius key and model can make tool calls before running the a
 python -m pytest -q
 ```
 
-The test suite has 163 tests. They use a fake PayPal and need no network or `.env`.
+The test suite has 190 tests. They use a fake PayPal and need no network or `.env`.
 
 ```powershell
 python scripts/run_attacks.py
 ```
 
-This simulates a fully compromised agent with 11 attacks (injected 5000 USD to an unknown payee, changed payee, oversized payment, unknown supplier, same invoice twice, splitting into small payments, expired mandate, wrong currency, zero and negative amounts, a large payment that is rejected, and a held payment that a person approves). It prints PASS or FAIL for each and exits with a non-zero code if any fail. The script uses a **fake PayPal and a temporary in-memory database**, so it sends no money and never touches `mandate.db`.
+This simulates a fully compromised agent with 12 attacks (injected 5000 USD to an unknown payee, changed payee, oversized payment, unknown supplier, same invoice twice, splitting into small payments, expired mandate, wrong currency, zero and negative amounts, a large payment that is rejected, a held payment that a person approves, and a known supplier with the correct payee and an inflated amount that is held). It prints PASS or FAIL for each and exits with a non-zero code if any fail. The script uses a **fake PayPal and a temporary in-memory database**, so it sends no money and never touches `mandate.db`.
 
 An offline demo of the rule engine alone is `python scripts/demo_policy.py`.
 
@@ -218,7 +219,7 @@ An offline demo of the rule engine alone is `python scripts/demo_policy.py`.
    - **BLOCK**: nothing is sent.
 4. Every request, decision and reason is written to an audit log.
 
-### The eight policy checks
+### The nine policy checks
 
 If several checks fire, the worst outcome wins: BLOCK beats HOLD, and HOLD beats ALLOW. The checks live in `mandate/policy.py`.
 
@@ -232,10 +233,13 @@ If several checks fire, the worst outcome wins: BLOCK beats HOLD, and HOLD beats
 | Per-payment cap | Oversized payment | BLOCK |
 | Cumulative budget | Splitting one big payment into many small ones | BLOCK when exceeded |
 | Approval threshold | Large but legitimate payment | HOLD |
+| Typical amount | Known supplier, correct payee, but an invoice far above what that supplier usually sends (only when the business has set a usual maximum for the supplier) | HOLD |
+
+The usual maximum is for the human owner. The agent's gateway never returns it, not even in the reasons it gives back.
 
 ## How Mandate maps to the judging criteria
 
-- **Technological implementation:** real PayPal Payouts calls (`mandate/payouts.py`), an MCP gateway (`mandate/gateway.py`), an agent that uses tool calling (`mandate/agent.py`), 163 tests, and an 11-attack script (`scripts/run_attacks.py`).
+- **Technological implementation:** real PayPal Payouts calls (`mandate/payouts.py`), an MCP gateway (`mandate/gateway.py`), an agent that uses tool calling (`mandate/agent.py`), 190 tests, and a 12-attack script (`scripts/run_attacks.py`).
 - **Design:** the dashboard (`mandate/static/index.html`) with an approval queue, an audit trail, rubber-stamp decisions, and the mandate shown as a slip with a budget bar.
 - **Potential impact:** it addresses invoice fraud against AI agents that pay. It is for finance teams that give an agent access to payments and want fixed limits and a human sign-off on anything unusual.
 - **Innovation:** the rules are code that the agent cannot override, and the approval path (the dashboard) cannot be reached by the agent or through the gateway.
@@ -244,6 +248,8 @@ If several checks fire, the worst outcome wins: BLOCK beats HOLD, and HOLD beats
 ## Project history
 
 This is a new project, built solo for this hackathon. The first commit in this repository is dated 9 November 2026.
+
+The rule engine `mandate/policy.py` was drafted first and then left alone. On 11 November 2026 one check (`typical_amount`) and one optional supplier field (`typical_max`) were added to it. No other check was changed.
 
 ## Third-party tools and licenses
 
@@ -259,7 +265,6 @@ These are used within their terms.
 ## Honest limits
 
 - In our tests the model resisted every injection sample. So the model did not prove the rules work. The **attack script and the simulated attacks** prove them, because they send the bad requests directly.
-- There is no rule yet for an amount that is unusual for a particular supplier. Only the cap, the threshold and the budget apply.
 - The dashboard has **no login**, and neither does the gateway. Run them only on your own PC. The one exception is the hosted demo, which is safe to expose only because it runs in offline demo mode with no keys on the server. Anyone with its link can approve, reject or reset its shared demo data.
 - If a person approves a changed-payee payment, the money goes to the **new** address. In the sandbox it shows as Unclaimed.
 
@@ -267,6 +272,7 @@ These are used within their terms.
 
 - Press **Reset demo data** on the dashboard. It deletes all payments and the audit log and restores the full budget. Payouts already sent to the sandbox are not undone.
 - Or stop the dashboard and the gateway, delete `mandate.db`, and start one of them again. It seeds a fresh demo mandate when the database is empty.
+- If you update from an older version and the start script says the database does not match the current schema, do the same: stop both, delete `mandate.db`, and start again. There is no migration.
 - `python scripts/run_flow.py` also wipes `mandate.db` and re-seeds it, then runs six requests and approves one. It makes two real sandbox payouts.
 
 After you change any `.py` file, restart the dashboard and the gateway. They load the code once at startup.
@@ -290,7 +296,7 @@ scripts/             run_dashboard, run_gateway, run_agent, run_attacks, run_flo
                      demo_policy, probe_paypal, check_nebius, mcp_smoke_test
 render.yaml          Render blueprint for the hosted demo (offline demo mode)
 samples/invoices/    eight sample invoices, four with hidden malicious text
-tests/               163 tests
+tests/               190 tests
 ```
 
 ## License

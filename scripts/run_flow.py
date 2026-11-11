@@ -26,7 +26,11 @@ def show(label: str, result: service.Result) -> None:
 
 
 def main() -> None:
-    conn = store.connect()
+    try:
+        conn = store.connect()
+    except store.SchemaMismatch as err:  # an old mandate.db: say what to do, not a traceback
+        print(err, file=sys.stderr)
+        raise SystemExit(1)
     mandate = seed(conn)
     supplier_email = mandate.suppliers["acme"].payee_email
     run = str(int(time.time()))  # fresh invoice ids on every run

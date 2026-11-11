@@ -13,7 +13,11 @@ from mandate.seed import seed
 
 
 def main() -> None:
-    conn = store.connect()
+    try:
+        conn = store.connect()
+    except store.SchemaMismatch as err:  # an old mandate.db: say what to do, not a traceback
+        print(err, file=sys.stderr)
+        raise SystemExit(1)
     if conn.execute("SELECT COUNT(*) FROM mandate").fetchone()[0] == 0:
         seed(conn)
         print("Database was empty: seeded the demo mandate.")

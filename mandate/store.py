@@ -17,7 +17,8 @@ CREATE TABLE IF NOT EXISTS mandate (
     approval_threshold TEXT, expires_at TEXT
 );
 CREATE TABLE IF NOT EXISTS suppliers (
-    supplier_id TEXT PRIMARY KEY, name TEXT, payee_email TEXT
+    supplier_id TEXT PRIMARY KEY, name TEXT, payee_email TEXT,
+    typical_max TEXT          -- the usual largest invoice from this supplier, or NULL for no limit
 );
 CREATE TABLE IF NOT EXISTS payments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -35,10 +36,20 @@ CREATE TABLE IF NOT EXISTS audit_log (
 """
 
 
+class SchemaMismatch(RuntimeError):
+    """The database file was made by an older version of Mandate."""
+
+
 def connect(path: str = DB_FILE) -> sqlite3.Connection:
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
     conn.executescript(SCHEMA)
+    # An old database file has no typical_max column. There is no migration: delete the file instead.
+    if "typical_max" not in {r["name"] for r in conn.execute("PRAGMA table_info(suppliers)")}:
+        conn.close()
+        raise SchemaMismatch(f"The database '{path}' was made by an older version of Mandate and does not "
+                             "match the current schema. Stop the dashboard and the gateway, delete the file "
+                             "mandate.db, and start again. It will be created fresh.")
     return conn
 
 
@@ -61,7 +72,9 @@ def save_mandate(conn: sqlite3.Connection, m: MandateConfig) -> None:
                  (m.currency, str(m.total_budget), str(m.per_payment_cap),
                   str(m.approval_threshold), m.expires_at.isoformat()))
     for s in m.suppliers.values():
-        conn.execute("INSERT INTO suppliers VALUES (?, ?, ?)", (s.supplier_id, s.name, s.payee_email))
+        conn.execute("INSERT INTO suppliers (supplier_id, name, payee_email, typical_max) VALUES (?, ?, ?, ?)",
+                     (s.supplier_id, s.name, s.payee_email,
+                      None if s.typical_max is None else str(s.typical_max)))
     conn.commit()
 
 
@@ -69,7 +82,8 @@ def load_mandate(conn: sqlite3.Connection) -> MandateConfig:
     row = conn.execute("SELECT * FROM mandate WHERE id = 1").fetchone()
     if row is None:
         raise RuntimeError("No mandate in the database. Run the seed first.")
-    suppliers = {r["supplier_id"]: Supplier(r["supplier_id"], r["name"], r["payee_email"])
+    suppliers = {r["supplier_id"]: Supplier(r["supplier_id"], r["name"], r["payee_email"],
+                                            None if r["typical_max"] is None else Decimal(r["typical_max"]))
                  for r in conn.execute("SELECT * FROM suppliers")}
     return MandateConfig(
         currency=row["currency"],

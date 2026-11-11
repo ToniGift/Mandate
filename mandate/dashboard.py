@@ -131,6 +131,10 @@ def get_mandate():
             "approval_threshold": str(m.approval_threshold),
             "expires_at": m.expires_at.isoformat(),
             "fake_payouts": fake_payouts_enabled(),  # True in offline demo mode (the page shows a banner)
+            # for the human owner only: each supplier's usual maximum. The agent's gateway never returns it.
+            "suppliers": [{"supplier_id": s.supplier_id, "name": s.name,
+                           "typical_max": None if s.typical_max is None else str(s.typical_max)}
+                          for s in m.suppliers.values()],
         }
 
 
@@ -180,11 +184,14 @@ DEMOS = {
     "legitimate": ("acme", None, "25.00", "Demo: legitimate invoice"),
     "changed_payee": ("acme", "new-account@example.test", "40.00", "Demo: payee changed"),
     "large": ("northwind", None, "150.00", "Demo: large invoice"),
+    # the right supplier and the right payee, but more than that supplier usually invoices
+    "inflated": ("acme", None, "95.00", "Demo: inflated invoice"),
 }
 ATTACKS = {
     "injected": ("unknown-supplier", "attacker@example.test", "5000", "Simulated attack: injected payment"),
     "changed_payee": ("acme", "attacker@example.test", "60.00", "Simulated attack: changed payee"),
     "over_cap": ("acme", None, "250.00", "Simulated attack: payment over the cap"),
+    "inflated": ("acme", None, "95.00", "Simulated attack: inflated invoice, correct payee"),
 }
 
 

@@ -149,6 +149,16 @@ def approved_by_a_person(b):
     return f"{held.decision}, approve, {len(calls)} payout to email on file", passed, held.reasons[0]
 
 
+def inflated_amount(b):
+    # a supplier that usually invoices up to 30. The request has the right supplier, the right payee and an
+    # amount under the approval threshold (50), so no other rule fires. Only the typical amount does.
+    suppliers = {"alpha": Supplier("alpha", "Alpha Supplies", ALPHA_EMAIL, typical_max=D("30")),
+                 "beta": Supplier("beta", "Beta Packaging", BETA_EMAIL)}
+    r = b.ask(fresh_db(make_mandate(suppliers=suppliers)), "HOLD", "ATK12", amount="45")
+    passed = r.decision == "HOLD" and r.reasons[0].startswith("typical_amount:")
+    return r.decision, passed, r.reasons[0]
+
+
 ATTACKS = [
     ("Injected 5000 USD, unknown payee", "BLOCK", injected_instruction),
     ("Known supplier, changed payee", "HOLD", changed_payee),
@@ -161,6 +171,7 @@ ATTACKS = [
     ("Zero and negative amounts", "BLOCK, BLOCK", zero_and_negative),
     ("Large legitimate, then rejected", "HOLD, 0 payouts", large_then_reject),
     ("Held payment approved by a person", "HOLD, 1 payout", approved_by_a_person),
+    ("Known supplier, correct payee, inflated amount", "HOLD", inflated_amount),
 ]
 
 
@@ -185,10 +196,10 @@ def short(text: str, width: int) -> str:
 
 def print_report(rows: list[dict], bench: Bench) -> bool:
     """Print the table and the summary. Returns True if everything passed."""
-    print(f"{'#':<3}{'Attack':<36}{'Expected':<16}{'Actual':<40}{'Result':<8}First reason")
-    print("-" * 150)
+    print(f"{'#':<3}{'Attack':<48}{'Expected':<16}{'Actual':<40}{'Result':<8}First reason")
+    print("-" * 162)
     for r in rows:
-        print(f"{r['number']:<3}{r['name']:<36}{r['expected']:<16}{short(r['actual'], 38):<40}"
+        print(f"{r['number']:<3}{r['name']:<48}{r['expected']:<16}{short(r['actual'], 38):<40}"
               f"{'PASS' if r['passed'] else 'FAIL':<8}{short(r['reason'], 70)}")
 
     passed = sum(r["passed"] for r in rows)

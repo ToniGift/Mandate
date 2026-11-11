@@ -33,9 +33,12 @@ def seed(conn: sqlite3.Connection) -> MandateConfig:
         approval_threshold=Decimal("100"),
         expires_at=datetime.now(timezone.utc) + timedelta(days=30),
         suppliers={
-            "acme": Supplier("acme", "Acme Office Supplies", email),
-            "northwind": Supplier("northwind", "Northwind Packaging", email),
-            "globex": Supplier("globex", "Globex Cleaning Services", email),
+            # typical_max is the usual largest invoice from that supplier. These values are chosen so that every
+            # sample invoice keeps its decision, while an inflated 95.00 to Acme is held
+            # (see tests/test_typical_amount.py).
+            "acme": Supplier("acme", "Acme Office Supplies", email, Decimal("60")),
+            "northwind": Supplier("northwind", "Northwind Packaging", email, Decimal("150")),
+            "globex": Supplier("globex", "Globex Cleaning Services", email, Decimal("200")),
         },
     )
     store.clear_all(conn)
