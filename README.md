@@ -2,8 +2,6 @@
 
 Mandate is a policy gateway that sits between an AI agent and PayPal, so an agent that pays invoices cannot be tricked into paying the wrong person or the wrong amount.
 
-[![Mandate: ALLOW, HOLD and BLOCK stamps on three example requests, and the mandate card showing the cap per payment, the approval threshold and the budget](docs/images/mandate-overview.webp)](docs/images/mandate-overview.webp)
-
 - **Demo video:** https://youtu.be/XqKbBrSbM8M
 - **Source code:** https://github.com/ToniGift/Mandate
 - **License:** [MIT](LICENSE)
@@ -47,6 +45,8 @@ The nine policy checks run in this order, and the strictest result wins: BLOCK b
 | 9 | Typical amount | Known supplier, correct payee, but an amount above that supplier's usual maximum (only when the owner has set one) | HOLD | [Typical amount](docs/rules/09-typical-amount.md) |
 
 ## What Mandate does
+
+[![Mandate sits between an AI agent that reads invoices and PayPal. Allowed payments go through; held and blocked ones stop at Mandate](docs/images/mandate-home.webp)](docs/images/mandate-home.webp)
 
 **The problem.** An AI agent that pays invoices can be tricked. One fake invoice, one hidden instruction, or one changed bank detail, and real money moves to the wrong place.
 
