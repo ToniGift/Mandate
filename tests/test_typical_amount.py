@@ -315,4 +315,4 @@ def test_readme_describes_nine_checks_and_the_new_attack():
     assert "12 attacks" in text and "12-attack script" in text
     assert "no rule yet for an amount that is unusual" not in text
     assert "11 attacks" not in text and "eight policy checks" not in text.lower()
-    assert "11 November 2026" in text  # the note that one check and one optional field were added to policy.py
+    assert "11 Nov 2026" in text  # the note that one check and one optional field were added to policy.py
